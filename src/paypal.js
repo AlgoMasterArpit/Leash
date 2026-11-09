@@ -75,7 +75,6 @@ export async function createVaultSetupToken({ returnUrl, cancelUrl, brandName })
             return_url: returnUrl,
             cancel_url: cancelUrl,
             shipping_preference: 'GET_FROM_FILE',
-            vault_instruction: 'ON_PAYER_APPROVAL',
           },
         },
       },
