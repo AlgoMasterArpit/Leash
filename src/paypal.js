@@ -3,8 +3,9 @@ import { config } from './config.js';
 
 export class PayPalError extends Error {
   constructor(status, body) {
-    const detail = body?.details?.[0]?.description || body?.message || `HTTP ${status}`;
-    super(`PayPal ${body?.name || 'error'}: ${detail}`);
+    const detail =
+      body?.details?.[0]?.description || body?.message || body?.error_description || `HTTP ${status}`;
+    super(`PayPal ${body?.name || body?.error || 'error'}: ${detail}`);
     this.status = status;
     this.name = 'PayPalError';
     this.code = body?.details?.[0]?.issue || body?.name;
