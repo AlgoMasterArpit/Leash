@@ -11,7 +11,7 @@
     "start": "node src/server.js",
     "dev": "node --watch --env-file=.env src/server.js",
     "mcp": "node src/mcp.js",
-    "test": "node --test test/"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
