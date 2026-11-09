@@ -1,6 +1,6 @@
 import { formatCents } from './money.js';
 
-export const AGENT_NAME = 'Brew & Bloom restock agent';
+export const AGENT_NAME = 'Restock agent';
 const MAX_STEPS = 8;
 
 const SYSTEM_PROMPT = `You are the purchasing agent for Brew & Bloom, a small neighbourhood café.
