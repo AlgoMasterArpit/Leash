@@ -95,3 +95,50 @@ async function refreshState() {
   renderWallet(state.wallet);
   renderRules(state.rules);
 }
+
+function renderApprovals(purchases) {
+  const pending = purchases.filter((p) => p.status === 'pending_owner');
+  $('approvals').innerHTML = pending
+    .map(
+      (p) => `
+      <article class="approval" data-id="${escapeHtml(p.id)}">
+        <div class="approval-head">
+          <span>${escapeHtml(p.vendors)}</span>
+          <span class="amount">${usd(p.total_cents)}</span>
+        </div>
+        <div class="meta">${escapeHtml(itemsSummary(p.items))} · ${escapeHtml(p.agent)} · ${timeAgo(p.created_at)}</div>
+        <p class="why">${escapeHtml(p.ai_summary)}</p>
+        <div class="approval-actions">
+          <button class="btn btn-primary" data-action="approve" type="button">Approve &amp; pay ${usd(p.total_cents)}</button>
+          <button class="btn btn-danger" data-action="decline" type="button">Decline</button>
+          <button class="btn btn-ghost" data-action="details" type="button">Details</button>
+        </div>
+      </article>`,
+    )
+    .join('');
+}
+
+$('approvals').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const id = button.closest('.approval').dataset.id;
+  const action = button.dataset.action;
+  if (action === 'details') return openDrawer(id);
+
+  button.disabled = true;
+  try {
+    const purchase = await api(`/api/purchases/${id}/${action}`, { method: 'POST' });
+    toast(
+      action === 'approve'
+        ? purchase.status === 'paid'
+          ? `Paid ${usd(purchase.total_cents)} to ${purchase.vendors} with PayPal`
+          : `Payment ${purchase.status}: ${purchase.error ?? ''}`
+        : 'Purchase declined. The agent will not be charged.',
+      { error: action === 'approve' && purchase.status !== 'paid' },
+    );
+  } catch (err) {
+    toast(err.message, { error: true });
+    button.disabled = false;
+  }
+  refresh();
+});
