@@ -171,3 +171,23 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: 'Something went wrong' });
 });
+
+async function ensureRules() {
+  if (store.getSetting('rules')) return;
+  try {
+    await leash.setRules(DEFAULT_RULES_TEXT);
+    console.log('Compiled default spending rules');
+  } catch (err) {
+    console.error('Could not compile default rules; set them from the dashboard.', err.message);
+  }
+}
+
+await ensureRules();
+
+const server = app.listen(config.PORT, () => {
+  console.log(`Leash listening on ${config.PUBLIC_URL} (PayPal ${config.PAYPAL_ENV})`);
+});
+
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => server.close(() => process.exit(0)));
+}
