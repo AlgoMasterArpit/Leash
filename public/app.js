@@ -504,3 +504,79 @@ $('agent-form').addEventListener('submit', async (event) => {
     refresh();
   }
 });
+
+let refreshing = null;
+
+function refresh() {
+  refreshing ??= Promise.all([
+    refreshState(),
+    api('/api/purchases').then((purchases) => {
+      renderApprovals(purchases);
+      renderLedger(purchases);
+    }),
+  ])
+    .catch((err) => console.error(err))
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
+$('rules-text').addEventListener('input', () => {
+  rulesDirty = true;
+  $('rules-status').textContent = 'Unsaved changes';
+});
+
+$('rules-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  $('rules-save').disabled = true;
+  $('rules-status').textContent = 'Compiling with AI…';
+  try {
+    await api('/api/rules', { method: 'PUT', body: { text: $('rules-text').value } });
+    rulesDirty = false;
+    $('rules-status').textContent = 'Saved';
+    toast('Rules updated. Agents are now held to the new policy.');
+  } catch (err) {
+    $('rules-status').textContent = '';
+    toast(err.message, { error: true });
+  } finally {
+    $('rules-save').disabled = false;
+    refresh();
+  }
+});
+
+$('connect-btn').addEventListener('click', async () => {
+  $('connect-btn').disabled = true;
+  try {
+    const { approveUrl } = await api('/api/connect', { method: 'POST' });
+    window.location.assign(approveUrl);
+  } catch (err) {
+    toast(err.message, { error: true });
+    $('connect-btn').disabled = false;
+  }
+});
+
+$('reset-demo').addEventListener('click', async () => {
+  if (!confirm('Clear all agent purchases from this demo? Your rules and PayPal connection stay.')) return;
+  await api('/api/demo/reset', { method: 'POST' });
+  $('timeline').innerHTML = '';
+  toast('Demo activity cleared');
+  refresh();
+});
+
+const connectResult = new URLSearchParams(location.search).get('connect');
+if (connectResult) {
+  const messages = {
+    success: ['PayPal connected. Leash can now pay for approved purchases.', false],
+    cancelled: ['PayPal connection was cancelled.', true],
+    failed: ['PayPal connection failed. Please try again.', true],
+  };
+  const [message, error] = messages[connectResult] ?? messages.failed;
+  toast(message, { error });
+  history.replaceState(null, '', location.pathname);
+}
+
+refresh();
+setInterval(() => {
+  if (!document.hidden) refresh();
+}, 5000);
