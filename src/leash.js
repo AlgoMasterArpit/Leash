@@ -102,12 +102,16 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       const current = store.getSetting('rules');
       const spentCents = spentThisWeek();
       const weeklyBudgetCents = current?.rules.weeklyBudgetCents ?? 0;
+      const week = store.totalsByStatusSince(startOfWeek());
+      const allTime = store.totalsByStatusSince(new Date(0));
       return {
         weeklyBudgetCents,
         autoApproveLimitCents: current?.rules.autoApproveLimitCents ?? 0,
         spentCents,
         remainingCents: Math.max(weeklyBudgetCents - spentCents, 0),
-        pendingCount: store.listPurchases().filter((p) => p.status === 'pending_owner').length,
+        pendingCount: allTime.pending_owner?.count ?? 0,
+        blockedCount: week.blocked?.count ?? 0,
+        blockedCents: week.blocked?.cents ?? 0,
         weekStart: startOfWeek().toISOString(),
       };
     },
