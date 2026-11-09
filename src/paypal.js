@@ -105,3 +105,45 @@ export function getPaymentToken(id) {
 export function deletePaymentToken(id) {
   return request('DELETE', `/v3/vault/payment-tokens/${encodeURIComponent(id)}`);
 }
+
+function orderItems(items) {
+  return items.map((item) => ({
+    name: item.name.slice(0, 127),
+    sku: item.sku,
+    quantity: String(item.qty),
+    unit_amount: { currency_code: 'USD', value: item.unitPrice },
+    category: 'PHYSICAL_GOODS',
+  }));
+}
+
+export async function chargeVault({ vaultId, purchaseId, vendorSummary, items, total }) {
+  const order = await request('POST', '/v2/checkout/orders', {
+    requestId: `charge-${purchaseId}`,
+    body: {
+      intent: 'CAPTURE',
+      payment_source: { paypal: { vault_id: vaultId } },
+      purchase_units: [
+        {
+          reference_id: purchaseId,
+          invoice_id: purchaseId,
+          custom_id: purchaseId,
+          description: `Agent purchase via Leash: ${vendorSummary}`.slice(0, 127),
+          soft_descriptor: 'LEASH AGENT',
+          items: orderItems(items),
+          amount: {
+            currency_code: 'USD',
+            value: total,
+            breakdown: { item_total: { currency_code: 'USD', value: total } },
+          },
+        },
+      ],
+    },
+  });
+  const capture = order.purchase_units?.[0]?.payments?.captures?.[0];
+  return {
+    orderId: order.id,
+    orderStatus: order.status,
+    captureId: capture?.id ?? null,
+    captureStatus: capture?.status ?? null,
+  };
+}
