@@ -354,3 +354,153 @@ $('drawer-backdrop').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeDrawer();
 });
+
+const PRESETS = [
+  ['Restock cups & lids', "We're running low on cups and lids. Restock enough for the weekend."],
+  ['Replace broken grinder', 'Our grinder broke this morning. Buy a replacement today.'],
+  ['Cheapest espresso beans', "We're almost out of espresso beans. Order 3 kg, cheapest option."],
+  ['Try inventory software', 'Sign us up for the KitchenOS inventory software trial.'],
+];
+
+$('presets').innerHTML = PRESETS.map(
+  ([label, task]) => `<button class="preset" type="button" data-task="${escapeHtml(task)}">${escapeHtml(label)}</button>`,
+).join('');
+
+$('presets').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-task]');
+  if (!button || $('agent-run').disabled) return;
+  $('agent-task').value = button.dataset.task;
+  $('agent-form').requestSubmit();
+});
+
+function renderMarkdown(text) {
+  const lines = escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  let html = '';
+  let inList = false;
+  for (const line of lines) {
+    const bullet = line.match(/^[-*•]\s+(.*)/);
+    if (bullet && !inList) html += '<ul>';
+    if (!bullet && inList) html += '</ul>';
+    inList = Boolean(bullet);
+    html += bullet ? `<li>${bullet[1]}</li>` : `<p>${line}</p>`;
+  }
+  return html + (inList ? '</ul>' : '');
+}
+
+const TOOL_LABEL = {
+  search_catalog: (args) => `Searching suppliers for <strong>${escapeHtml(args.query)}</strong>`,
+  check_budget: () => 'Checking this week’s budget',
+  request_purchase: (args) =>
+    `Asking Leash to buy <strong>${escapeHtml((args.items ?? []).map((i) => `${i.qty}× ${i.sku}`).join(', '))}</strong>`,
+};
+
+function step(icon, html) {
+  const li = document.createElement('li');
+  li.className = 'step';
+  li.innerHTML = `<span class="step-icon" aria-hidden="true">${icon}</span><div class="step-body">${html}</div>`;
+  return li;
+}
+
+function decisionCard(p) {
+  const failed = p.checks.filter((c) => c.status !== 'pass');
+  const li = document.createElement('li');
+  li.className = `decision ${p.decision}`;
+  li.innerHTML = `
+    <div class="decision-head">${statusPill(p)}<strong>${escapeHtml(p.vendors)}</strong><span class="amount">${usd(p.total_cents)}</span></div>
+    <p>${escapeHtml(p.ai_summary)}</p>
+    ${failed.length ? `<ul>${failed.map((c) => `<li>${escapeHtml(c.detail)}</li>`).join('')}</ul>` : ''}`;
+  li.addEventListener('click', () => openDrawer(p.id));
+  li.style.cursor = 'pointer';
+  return li;
+}
+
+function renderAgentEvent(event, timeline) {
+  if (event.type === 'tool_call' && event.tool !== 'request_purchase') {
+    return step(event.tool === 'search_catalog' ? '⌕' : '$', TOOL_LABEL[event.tool]?.(event.args) ?? escapeHtml(event.tool));
+  }
+  if (event.type === 'tool_call') return step('→', TOOL_LABEL.request_purchase(event.args));
+  if (event.type === 'tool_result' && event.tool === 'search_catalog') {
+    return step('·', `Found ${event.output.length} product${event.output.length === 1 ? '' : 's'}`);
+  }
+  if (event.type === 'tool_result' && event.tool === 'check_budget') {
+    return step('·', `${escapeHtml(event.output.remaining_this_week)} left this week`);
+  }
+  if (event.type === 'purchase') {
+    refresh();
+    return decisionCard(event.purchase);
+  }
+  if (event.type === 'tool_error') return step('!', `<span style="color:var(--bad)">${escapeHtml(event.message)}</span>`);
+  if (event.type === 'message') {
+    const li = document.createElement('li');
+    li.className = 'agent-message';
+    li.innerHTML = renderMarkdown(event.text ?? '');
+    return li;
+  }
+  if (event.type === 'error') {
+    toast(event.message, { error: true });
+    return step('!', `<span style="color:var(--bad)">Agent error: ${escapeHtml(event.message)}</span>`);
+  }
+  return null;
+}
+
+async function runAgent(task) {
+  const timeline = $('timeline');
+  timeline.innerHTML = '';
+  const thinking = document.createElement('li');
+  thinking.className = 'thinking';
+  thinking.textContent = 'Agent is working…';
+  timeline.append(thinking);
+
+  const res = await fetch('/api/agent/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task }),
+  });
+  if (!res.ok) {
+    thinking.remove();
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Agent could not start');
+  }
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line);
+      if (event.type === 'done') thinking.remove();
+      const node = renderAgentEvent(event, timeline);
+      if (node) {
+        timeline.insertBefore(node, thinking.isConnected ? thinking : null);
+        node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }
+  thinking.remove();
+}
+
+$('agent-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const task = $('agent-task').value.trim();
+  if (!task) return;
+  $('agent-run').disabled = true;
+  $('agent-run').textContent = 'Running…';
+  try {
+    await runAgent(task);
+  } catch (err) {
+    toast(err.message, { error: true });
+  } finally {
+    $('agent-run').disabled = false;
+    $('agent-run').textContent = 'Run agent';
+    refresh();
+  }
+});
