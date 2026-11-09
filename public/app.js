@@ -68,6 +68,11 @@ function renderBudget(budget) {
   $('stat-left').textContent = usd(budget.remainingCents);
   $('stat-limit').textContent = usd(budget.autoApproveLimitCents);
   $('stat-pending').textContent = String(budget.pendingCount);
+  $('shield-text').innerHTML = budget.blockedCount
+    ? `Leash blocked <strong>${usd(budget.blockedCents)}</strong> across ${budget.blockedCount} risky ${
+        budget.blockedCount === 1 ? 'attempt' : 'attempts'
+      } this week.`
+    : 'No risky purchases blocked yet this week.';
   const weekStart = new Date(budget.weekStart);
   $('week-label').textContent = `Since Monday ${weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · resets weekly`;
 }
