@@ -159,24 +159,27 @@ const columnDefs = [
   {
     field: 'created_at',
     headerName: 'When',
-    width: 110,
+    width: 100,
     sort: 'desc',
     valueFormatter: (p) => (p.node.rowPinned ? '' : timeAgo(p.value)),
   },
-  { field: 'agent', headerName: 'Agent', width: 190 },
   {
-    colId: 'items',
-    headerName: 'Items',
-    flex: 1.4,
-    minWidth: 200,
-    valueGetter: (p) => (p.data.items ? itemsSummary(p.data.items) : ''),
-    tooltipValueGetter: (p) => p.value,
+    colId: 'purchase',
+    headerName: 'Purchase',
+    flex: 1.3,
+    minWidth: 220,
+    valueGetter: (p) => (p.data.items ? `${p.data.vendors} ${itemsSummary(p.data.items)}` : p.data.label),
+    cellRenderer: (p) =>
+      p.node.rowPinned
+        ? `<strong>${escapeHtml(p.data.label)}</strong>`
+        : `<div class="cell-stack"><strong>${escapeHtml(p.data.vendors)}</strong><span>${escapeHtml(itemsSummary(p.data.items))}</span></div>`,
+    tooltipValueGetter: (p) => (p.data.items ? itemsSummary(p.data.items) : null),
   },
-  { field: 'vendors', headerName: 'Vendor', width: 190 },
+  { field: 'agent', headerName: 'Agent', width: 140 },
   {
     field: 'total_cents',
     headerName: 'Amount',
-    width: 115,
+    width: 105,
     type: 'rightAligned',
     filter: 'agNumberColumnFilter',
     valueFormatter: (p) => usd(p.value ?? 0),
@@ -185,29 +188,29 @@ const columnDefs = [
   {
     colId: 'outcome',
     headerName: 'Outcome',
-    width: 165,
+    width: 150,
     valueGetter: (p) => (p.node.rowPinned ? '' : statusOf(p.data)[0]),
     cellRenderer: (p) => (p.node.rowPinned ? '' : statusPill(p.data)),
   },
-  { field: 'risk', headerName: 'AI risk', width: 120, cellRenderer: riskRenderer, filter: 'agNumberColumnFilter' },
+  { field: 'risk', headerName: 'AI risk', width: 105, cellRenderer: riskRenderer, filter: 'agNumberColumnFilter' },
   {
     field: 'ai_summary',
     headerName: 'Why',
-    flex: 2,
-    minWidth: 260,
+    flex: 1.6,
+    minWidth: 220,
     tooltipField: 'ai_summary',
   },
   {
     field: 'capture_id',
     headerName: 'PayPal capture',
-    width: 175,
+    width: 160,
     cellClass: 'mono',
     valueFormatter: (p) => p.value ?? '',
   },
   {
     colId: 'actions',
     headerName: '',
-    width: 100,
+    width: 90,
     sortable: false,
     filter: false,
     resizable: false,
@@ -217,16 +220,28 @@ const columnDefs = [
 
 function totalsRow(purchases) {
   const paid = purchases.filter((p) => p.status === 'paid');
-  return [{ agent: `${paid.length} paid purchases`, total_cents: paid.reduce((s, p) => s + p.total_cents, 0) }];
+  return [
+    {
+      label: `Total paid · ${paid.length} ${paid.length === 1 ? 'purchase' : 'purchases'}`,
+      total_cents: paid.reduce((s, p) => s + p.total_cents, 0),
+    },
+  ];
 }
+
+syncGridTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncGridTheme);
 
 const ledger = agGrid.createGrid($('ledger'), {
   columnDefs,
   rowData: [],
   getRowId: (p) => p.data.id ?? 'total',
   defaultColDef: { sortable: true, filter: true, resizable: true },
-  rowHeight: 46,
+  rowHeight: 56,
   headerHeight: 40,
+  domLayout: 'autoHeight',
+  pagination: true,
+  paginationPageSize: 10,
+  paginationPageSizeSelector: [10, 25, 50],
   animateRows: true,
   tooltipShowDelay: 400,
   overlayNoRowsTemplate: '<span>No agent purchases yet. Run the restock agent to see Leash in action.</span>',
@@ -249,7 +264,7 @@ $('ledger-search').addEventListener('input', (event) => {
 $('ledger-export').addEventListener('click', () => {
   ledger.exportDataAsCsv({
     fileName: `leash-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
-    columnKeys: ['created_at', 'agent', 'items', 'vendors', 'total_cents', 'outcome', 'risk', 'ai_summary', 'capture_id'],
+    columnKeys: ['created_at', 'purchase', 'agent', 'total_cents', 'outcome', 'risk', 'ai_summary', 'capture_id'],
     processCellCallback: (p) => (p.column.getColId() === 'total_cents' ? (p.value / 100).toFixed(2) : p.value),
   });
 });
@@ -258,8 +273,6 @@ function syncGridTheme() {
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   $('ledger').className = dark ? 'ag-theme-quartz-dark' : 'ag-theme-quartz';
 }
-syncGridTheme();
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncGridTheme);
 
 async function refundPurchase(purchase) {
   if (!confirm(`Refund ${usd(purchase.total_cents)} to your PayPal wallet?`)) return;
