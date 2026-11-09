@@ -81,3 +81,25 @@ app.put('/api/rules', async (req, res) => {
 });
 
 app.get('/api/catalog', (req, res) => res.json(catalog.listProducts()));
+
+app.post('/api/connect', async (req, res) => {
+  const { approveUrl } = await leash.startConnect();
+  res.json({ approveUrl });
+});
+
+app.get('/connect/return', async (req, res) => {
+  const setupTokenId = req.query.approval_token_id;
+  if (typeof setupTokenId !== 'string' || !setupTokenId) return res.redirect('/?connect=failed');
+  try {
+    await leash.finishConnect(setupTokenId);
+    res.redirect('/?connect=success');
+  } catch (err) {
+    console.error('Vault connection failed', err);
+    res.redirect('/?connect=failed');
+  }
+});
+
+app.delete('/api/wallet', async (req, res) => {
+  await leash.disconnect();
+  res.sendStatus(204);
+});
