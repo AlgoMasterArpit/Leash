@@ -16,7 +16,11 @@ const schema = z.object({
   DATABASE_PATH: z.string().default('leash.db'),
 });
 
-const env = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== ''));
+const env = Object.fromEntries(
+  Object.entries(process.env)
+    .map(([key, value]) => [key, value.trim()])
+    .filter(([, value]) => value !== ''),
+);
 const parsed = schema.safeParse(env);
 
 if (!parsed.success) {
