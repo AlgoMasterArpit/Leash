@@ -411,6 +411,31 @@ code,
   color: var(--muted);
 }
 
+.shield {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.shield svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.shield p {
+  margin: 0;
+}
+
+.shield strong {
+  color: var(--text);
+}
+
 .rules-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
