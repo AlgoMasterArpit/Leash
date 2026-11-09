@@ -55,3 +55,43 @@ function statusPill(purchase) {
 }
 
 const itemsSummary = (items) => items.map((i) => `${i.qty}× ${i.name}`).join(', ');
+
+let rulesDirty = false;
+
+function renderBudget(budget) {
+  const pct = budget.weeklyBudgetCents ? Math.min((budget.spentCents / budget.weeklyBudgetCents) * 100, 100) : 0;
+  $('spent').textContent = usd(budget.spentCents);
+  $('budget-of').textContent = `of ${usd(budget.weeklyBudgetCents)}`;
+  $('meter-fill').style.width = `${pct}%`;
+  $('meter-fill').className = `meter-fill${pct >= 100 ? ' full' : pct >= 75 ? ' high' : ''}`;
+  $('meter').setAttribute('aria-valuenow', String(Math.round(pct)));
+  $('stat-left').textContent = usd(budget.remainingCents);
+  $('stat-limit').textContent = usd(budget.autoApproveLimitCents);
+  $('stat-pending').textContent = String(budget.pendingCount);
+  const weekStart = new Date(budget.weekStart);
+  $('week-label').textContent = `Since Monday ${weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · resets weekly`;
+}
+
+function renderWallet(wallet) {
+  $('wallet-pill').classList.toggle('connected', Boolean(wallet));
+  $('wallet-label').textContent = wallet
+    ? `PayPal connected${wallet.payerEmail ? ` · ${wallet.payerEmail}` : ''}`
+    : 'PayPal not connected';
+  $('connect-banner').hidden = Boolean(wallet);
+}
+
+function renderRules(rules) {
+  if (!rules) {
+    $('rules-compiled').innerHTML = '<li>No rules yet. Write some and press Update rules.</li>';
+    return;
+  }
+  if (!rulesDirty) $('rules-text').value = rules.text;
+  $('rules-compiled').innerHTML = rules.summary.map((line) => `<li>${escapeHtml(line)}</li>`).join('');
+}
+
+async function refreshState() {
+  const state = await api('/api/state');
+  renderBudget(state.budget);
+  renderWallet(state.wallet);
+  renderRules(state.rules);
+}
