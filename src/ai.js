@@ -110,3 +110,9 @@ ${checks.map((c) => `- ${c.label}: ${c.status} (${c.detail})`).join('\n')}`;
 
   return VerdictSchema.parse(await chatJson({ system: JUDGE_PROMPT, user }));
 }
+
+export async function scanForInjection({ reason, items }) {
+  const texts = [reason, ...items.map((i) => `${i.name}. ${i.description}`)];
+  const scores = await Promise.all(texts.map(injectionScore));
+  return Math.max(...scores);
+}
