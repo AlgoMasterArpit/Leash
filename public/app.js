@@ -376,7 +376,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 const PRESETS = [
-  ['Restock cups & lids', "We're running low on cups and lids. Restock enough for the weekend."],
+  ['Restock cups & lids', "We're running low. Order 2 sleeves of 12 oz cups and 2 packs of lids."],
   ['Replace broken grinder', 'Our grinder broke this morning. Buy a replacement today.'],
   ['Cheapest espresso beans', "We're almost out of espresso beans. Order 3 kg, cheapest option."],
   ['Try inventory software', 'Sign us up for the KitchenOS inventory software trial.'],
