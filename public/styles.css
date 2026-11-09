@@ -824,9 +824,9 @@ code,
 }
 
 .risk-bar {
-  flex: 1;
+  flex: none;
+  width: 48px;
   height: 6px;
-  max-width: 64px;
   border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
