@@ -17,5 +17,8 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "express": "^5.3.0",
     "zod": "^4.6.7"
+  },
+  "bin": {
+    "leash-mcp": "src/mcp.js"
   }
 }
