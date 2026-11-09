@@ -8,10 +8,11 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch --env-file=.env src/server.js",
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch --env-file=.env src/server.js",
     "mcp": "node src/mcp.js",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "webhook:register": "node --env-file-if-exists=.env scripts/register-webhook.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
