@@ -6,6 +6,8 @@ Small businesses are starting to let AI agents do their buying: restocking suppl
 
 Leash sits between any AI agent and the owner's PayPal account. The owner writes rules in plain English. Every purchase an agent attempts is checked against those rules, reviewed by an AI risk judge, and then **paid instantly**, **held for one-tap approval**, or **blocked** with a reason the owner can read.
 
+**Live demo: [leash-v8l7.onrender.com](https://leash-v8l7.onrender.com)** (PayPal sandbox; the free tier can take about 50 seconds to wake up)
+
 ![CI](https://github.com/AlgoMasterArpit/Leash/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -79,7 +81,7 @@ Sponsor tools: **AG Grid** (ledger: custom cell renderers, pinned totals row, qu
 
 ### Hosted demo
 
-The hosted demo is already connected to a PayPal sandbox buyer, so you can start immediately:
+Open **[leash-v8l7.onrender.com](https://leash-v8l7.onrender.com)**. It's already connected to a PayPal sandbox buyer, so you can start immediately:
 
 1. Click a task chip under **Restock agent**, for example *Cheapest espresso beans*.
 2. Watch the agent try the cheapest listing. Leash **blocks** it because the listing contains a prompt injection and the vendor is unapproved. The agent then picks an approved supplier, and that order is **held for approval** because it's over $50.
