@@ -103,3 +103,25 @@ app.delete('/api/wallet', async (req, res) => {
   await leash.disconnect();
   res.sendStatus(204);
 });
+
+function requireAgentKey(req, res, next) {
+  if (config.LEASH_AGENT_KEY && req.get('x-leash-agent-key') !== config.LEASH_AGENT_KEY) {
+    throw new AppError(401, 'Missing or invalid x-leash-agent-key header');
+  }
+  next();
+}
+
+app.get('/api/purchases', (req, res) => res.json(leash.listPurchases()));
+app.get('/api/purchases/:id', (req, res) => res.json(leash.getPurchase(req.params.id)));
+
+app.post('/api/purchases', requireAgentKey, async (req, res) => {
+  const purchase = await leash.requestPurchase(PurchaseBody.parse(req.body));
+  res.status(201).json(purchase);
+});
+
+app.post('/api/purchases/:id/approve', async (req, res) => res.json(await leash.approve(req.params.id)));
+app.post('/api/purchases/:id/decline', (req, res) => res.json(leash.decline(req.params.id)));
+app.post('/api/purchases/:id/refund', async (req, res) => {
+  const { note } = RefundBody.parse(req.body ?? {});
+  res.json(await leash.refund(req.params.id, note));
+});
