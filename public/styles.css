@@ -745,8 +745,31 @@ code,
 }
 
 #ledger {
-  height: 420px;
   width: 100%;
+  --ag-font-family: var(--font);
+  --ag-active-color: var(--accent);
+  --ag-border-radius: 10px;
+  --ag-wrapper-border-radius: 12px;
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.cell-stack strong {
+  font-weight: 600;
+}
+
+.cell-stack span {
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #ledger .ag-row {
