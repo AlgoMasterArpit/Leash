@@ -60,3 +60,49 @@ async function request(method, path, { body, requestId } = {}) {
   if (!res.ok) throw new PayPalError(res.status, data);
   return data;
 }
+
+export async function createVaultSetupToken({ returnUrl, cancelUrl, brandName }) {
+  const token = await request('POST', '/v3/vault/setup-tokens', {
+    requestId: randomUUID(),
+    body: {
+      payment_source: {
+        paypal: {
+          usage_type: 'MERCHANT',
+          usage_pattern: 'UNSCHEDULED_POSTPAID',
+          description: 'Leash pays approved purchases made by your AI agents',
+          experience_context: {
+            brand_name: brandName,
+            return_url: returnUrl,
+            cancel_url: cancelUrl,
+            shipping_preference: 'GET_FROM_FILE',
+            vault_instruction: 'ON_PAYER_APPROVAL',
+          },
+        },
+      },
+    },
+  });
+  return {
+    id: token.id,
+    approveUrl: token.links.find((l) => l.rel === 'approve')?.href,
+  };
+}
+
+export async function createPaymentToken(setupTokenId) {
+  const token = await request('POST', '/v3/vault/payment-tokens', {
+    requestId: `pt-${setupTokenId}`,
+    body: { payment_source: { token: { id: setupTokenId, type: 'SETUP_TOKEN' } } },
+  });
+  return {
+    id: token.id,
+    customerId: token.customer?.id,
+    payerEmail: token.payment_source?.paypal?.email_address ?? null,
+  };
+}
+
+export function getPaymentToken(id) {
+  return request('GET', `/v3/vault/payment-tokens/${encodeURIComponent(id)}`);
+}
+
+export function deletePaymentToken(id) {
+  return request('DELETE', `/v3/vault/payment-tokens/${encodeURIComponent(id)}`);
+}
