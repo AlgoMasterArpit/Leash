@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: leash
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_VAULT_ID
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: LEASH_AGENT_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /tmp/leash.db
