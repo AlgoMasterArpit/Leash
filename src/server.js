@@ -6,6 +6,7 @@ import { createStore } from './db.js';
 import { createLeash } from './leash.js';
 import { createAgent } from './agent.js';
 import { AppError } from './errors.js';
+import { createAccessControl } from './auth.js';
 import { DEFAULT_RULES_TEXT } from './rules.js';
 import * as paypal from './paypal.js';
 import * as ai from './ai.js';
@@ -55,10 +56,11 @@ app.post('/webhooks/paypal', express.json({ limit: '1mb' }), async (req, res) =>
   res.sendStatus(200);
 });
 
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+app.use(createAccessControl({ dashboardPassword: config.DASHBOARD_PASSWORD, agentKey: config.LEASH_AGENT_KEY }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.static(fileURLToPath(new URL('../public', import.meta.url)), { extensions: ['html'] }));
-
-app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 function maskEmail(email) {
   if (!email) return null;
@@ -104,17 +106,10 @@ app.delete('/api/wallet', async (req, res) => {
   res.sendStatus(204);
 });
 
-function requireAgentKey(req, res, next) {
-  if (config.LEASH_AGENT_KEY && req.get('x-leash-agent-key') !== config.LEASH_AGENT_KEY) {
-    throw new AppError(401, 'Missing or invalid x-leash-agent-key header');
-  }
-  next();
-}
-
 app.get('/api/purchases', (req, res) => res.json(leash.listPurchases()));
 app.get('/api/purchases/:id', (req, res) => res.json(leash.getPurchase(req.params.id)));
 
-app.post('/api/purchases', requireAgentKey, async (req, res) => {
+app.post('/api/purchases', async (req, res) => {
   const purchase = await leash.requestPurchase(PurchaseBody.parse(req.body));
   res.status(201).json(purchase);
 });
