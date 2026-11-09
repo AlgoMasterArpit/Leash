@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Leash · Spend controls for AI agents</title>
+    <meta name="description" content="Let AI agents buy for your business on PayPal, inside rules you write in plain English." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" stroke="currentColor" stroke-width="3" />
+          <path d="M11 9v14h10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+          <circle cx="21" cy="11" r="2.6" fill="currentColor" />
+        </svg>
+        Leash
+      </div>
+      <div class="workspace">Brew &amp; Bloom Café <span class="sandbox-tag">PayPal Sandbox</span></div>
+      <div class="topbar-actions">
+        <span class="wallet-pill" id="wallet-pill"><span class="dot"></span><span id="wallet-label">Checking PayPal…</span></span>
+        <button class="btn btn-ghost btn-sm" id="reset-demo" type="button">Reset demo</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <div class="banner" id="connect-banner" hidden>
+        <p>
+          <strong>Connect PayPal once.</strong> Leash saves your PayPal wallet with PayPal Vault, so it can pay for
+          purchases your rules allow without you being there.
+        </p>
+        <button class="btn btn-primary" id="connect-btn" type="button">Connect PayPal</button>
+      </div>
+
+      <div class="row row-top">
+        <section class="card" aria-labelledby="budget-title">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title" id="budget-title">This week</h2>
+              <p class="card-sub" id="week-label">Resets every Monday</p>
+            </div>
+          </div>
+          <div class="budget-amount">
+            <strong id="spent">$0.00</strong><span id="budget-of">of $0.00</span>
+          </div>
+          <div class="meter" role="progressbar" aria-label="Weekly budget used" aria-valuemin="0" aria-valuemax="100" id="meter">
+            <div class="meter-fill" id="meter-fill"></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><b id="stat-left">$0</b><span>left</span></div>
+            <div class="stat"><b id="stat-limit">$0</b><span>auto-approve</span></div>
+            <div class="stat"><b id="stat-pending">0</b><span>waiting</span></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="rules-title">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title" id="rules-title">Your rules</h2>
+              <p class="card-sub">Write them like you would tell a new employee. Leash turns them into enforceable policy.</p>
+            </div>
+          </div>
+          <div class="rules-grid">
+            <form id="rules-form">
+              <label class="sr-only" for="rules-text">Spending rules</label>
+              <textarea class="rules-input" id="rules-text" maxlength="1000" required></textarea>
+              <div class="rules-actions">
+                <span class="eyebrow" id="rules-status"></span>
+                <button class="btn btn-primary" type="submit" id="rules-save">Update rules</button>
+              </div>
+            </form>
+            <div>
+              <div class="eyebrow">How Leash enforces it</div>
+              <ul class="rules-compiled" id="rules-compiled"></ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="row row-mid">
+        <section class="card" aria-labelledby="agent-title">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title" id="agent-title">Restock agent</h2>
+              <p class="card-sub">An AI agent that shops for the café. It can only pay through Leash.</p>
+            </div>
+          </div>
+          <div class="presets" id="presets"></div>
+          <form class="agent-form" id="agent-form">
+            <label class="sr-only" for="agent-task">Task for the agent</label>
+            <input id="agent-task" placeholder="Tell the agent what the café needs…" maxlength="500" autocomplete="off" required />
+            <button class="btn btn-primary" type="submit" id="agent-run">Run agent</button>
+          </form>
+          <ol class="timeline" id="timeline" aria-live="polite"></ol>
+        </section>
+
+        <section class="card" aria-labelledby="approvals-title">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title" id="approvals-title">Needs your approval</h2>
+              <p class="card-sub">Approving pays instantly from your saved PayPal wallet.</p>
+            </div>
+          </div>
+          <div class="approvals" id="approvals"></div>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="ledger-title">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title" id="ledger-title">Agent spending ledger</h2>
+            <p class="card-sub">Every purchase an agent attempted, what Leash decided, and why. Click a row for the full audit trail.</p>
+          </div>
+          <div class="ledger-tools">
+            <label class="sr-only" for="ledger-search">Search ledger</label>
+            <input id="ledger-search" type="search" placeholder="Search vendor, item, status…" />
+            <button class="btn btn-sm" id="ledger-export" type="button">Export CSV</button>
+          </div>
+        </div>
+        <div id="ledger"></div>
+      </section>
+    </main>
+
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <aside class="drawer" id="drawer" aria-label="Purchase details" aria-hidden="true"></aside>
+    <div class="toast-stack" id="toasts" role="status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
