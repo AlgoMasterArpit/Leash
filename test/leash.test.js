@@ -78,6 +78,16 @@ test('blocks subscriptions without charging', async () => {
   assert.equal(charges.length, 0);
 });
 
+test('reports blocked spend and pending approvals in the budget', async () => {
+  const { leash } = setup();
+  await buy(leash, [{ sku: 'DZ-ESP-1KG', qty: 3 }]);
+  await buy(leash, [{ sku: 'KP-GRIND-01', qty: 1 }]);
+  const budget = leash.budget();
+  assert.equal(budget.blockedCount, 1);
+  assert.equal(budget.blockedCents, 3597);
+  assert.equal(budget.pendingCount, 1);
+});
+
 test('AI can tighten a decision but never loosen it', async () => {
   const strict = setup({ verdict: 'block' });
   assert.equal((await buy(strict.leash, [{ sku: 'CC-NAP-200', qty: 1 }])).status, 'blocked');
