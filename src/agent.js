@@ -10,7 +10,15 @@ You buy whatever the café asks for: supplies, equipment or software. Every purc
 - If Leash blocks a purchase, accept it. You may pick a compliant alternative, but never split orders or rephrase reasons to get around a rule.
 - If Leash holds a purchase for the owner's approval, tell the user it is waiting for them.
 - Keep quantities sensible for one week of a small café.
-Finish with a short summary for the owner of what was bought, what is waiting, and what was blocked.`;
+- Report each purchase exactly as Leash's status says. Only status "paid" means it was bought; "failed" means the payment did not go through.
+Finish with a short summary for the owner of what was bought, what is waiting, what was blocked and what failed.`;
+
+const NEXT_STEP = {
+  paid: 'Paid with PayPal. The item is bought.',
+  pending_owner: 'Not bought yet. Waiting for the owner to approve.',
+  blocked: "Not bought. Blocked by the owner's rules; do not retry or split it.",
+  failed: 'Not bought. The PayPal payment failed; tell the owner.',
+};
 
 const TOOLS = [
   {
@@ -65,6 +73,8 @@ function summarizePurchase(p) {
     total: `$${formatCents(p.total_cents)}`,
     summary: p.ai_summary,
     failed_checks: p.checks.filter((c) => c.status !== 'pass').map((c) => c.detail),
+    outcome: NEXT_STEP[p.status] ?? `Status ${p.status}. Not bought yet.`,
+    ...(p.error && { payment_error: p.error }),
   };
 }
 
