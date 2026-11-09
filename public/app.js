@@ -142,3 +142,132 @@ $('approvals').addEventListener('click', async (event) => {
   }
   refresh();
 });
+
+function riskRenderer(params) {
+  if (params.node.rowPinned || params.value == null) return '';
+  const value = params.value;
+  const color = value >= 70 ? 'var(--bad)' : value >= 35 ? 'var(--warn)' : 'var(--ok)';
+  return `<div class="risk"><div class="risk-bar"><i style="width:${value}%;background:${color}"></i></div><span>${value}</span></div>`;
+}
+
+function actionsRenderer(params) {
+  if (params.node.rowPinned || params.data.status !== 'paid') return '';
+  return '<button class="btn btn-sm" data-refund type="button">Refund</button>';
+}
+
+const columnDefs = [
+  {
+    field: 'created_at',
+    headerName: 'When',
+    width: 110,
+    sort: 'desc',
+    valueFormatter: (p) => (p.node.rowPinned ? '' : timeAgo(p.value)),
+  },
+  { field: 'agent', headerName: 'Agent', width: 190 },
+  {
+    colId: 'items',
+    headerName: 'Items',
+    flex: 1.4,
+    minWidth: 200,
+    valueGetter: (p) => (p.data.items ? itemsSummary(p.data.items) : ''),
+    tooltipValueGetter: (p) => p.value,
+  },
+  { field: 'vendors', headerName: 'Vendor', width: 190 },
+  {
+    field: 'total_cents',
+    headerName: 'Amount',
+    width: 115,
+    type: 'rightAligned',
+    filter: 'agNumberColumnFilter',
+    valueFormatter: (p) => usd(p.value ?? 0),
+    cellStyle: { fontVariantNumeric: 'tabular-nums', fontWeight: 600 },
+  },
+  {
+    colId: 'outcome',
+    headerName: 'Outcome',
+    width: 165,
+    valueGetter: (p) => (p.node.rowPinned ? '' : statusOf(p.data)[0]),
+    cellRenderer: (p) => (p.node.rowPinned ? '' : statusPill(p.data)),
+  },
+  { field: 'risk', headerName: 'AI risk', width: 120, cellRenderer: riskRenderer, filter: 'agNumberColumnFilter' },
+  {
+    field: 'ai_summary',
+    headerName: 'Why',
+    flex: 2,
+    minWidth: 260,
+    tooltipField: 'ai_summary',
+  },
+  {
+    field: 'capture_id',
+    headerName: 'PayPal capture',
+    width: 175,
+    cellClass: 'mono',
+    valueFormatter: (p) => p.value ?? '',
+  },
+  {
+    colId: 'actions',
+    headerName: '',
+    width: 100,
+    sortable: false,
+    filter: false,
+    resizable: false,
+    cellRenderer: actionsRenderer,
+  },
+];
+
+function totalsRow(purchases) {
+  const paid = purchases.filter((p) => p.status === 'paid');
+  return [{ agent: `${paid.length} paid purchases`, total_cents: paid.reduce((s, p) => s + p.total_cents, 0) }];
+}
+
+const ledger = agGrid.createGrid($('ledger'), {
+  columnDefs,
+  rowData: [],
+  getRowId: (p) => p.data.id ?? 'total',
+  defaultColDef: { sortable: true, filter: true, resizable: true },
+  rowHeight: 46,
+  headerHeight: 40,
+  animateRows: true,
+  tooltipShowDelay: 400,
+  overlayNoRowsTemplate: '<span>No agent purchases yet. Run the restock agent to see Leash in action.</span>',
+  onCellClicked: (event) => {
+    if (event.node.rowPinned) return;
+    if (event.event.target.closest('[data-refund]')) return refundPurchase(event.data);
+    openDrawer(event.data.id);
+  },
+});
+
+function renderLedger(purchases) {
+  ledger.setGridOption('rowData', purchases);
+  ledger.setGridOption('pinnedBottomRowData', totalsRow(purchases));
+}
+
+$('ledger-search').addEventListener('input', (event) => {
+  ledger.setGridOption('quickFilterText', event.target.value);
+});
+
+$('ledger-export').addEventListener('click', () => {
+  ledger.exportDataAsCsv({
+    fileName: `leash-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
+    columnKeys: ['created_at', 'agent', 'items', 'vendors', 'total_cents', 'outcome', 'risk', 'ai_summary', 'capture_id'],
+    processCellCallback: (p) => (p.column.getColId() === 'total_cents' ? (p.value / 100).toFixed(2) : p.value),
+  });
+});
+
+function syncGridTheme() {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  $('ledger').className = dark ? 'ag-theme-quartz-dark' : 'ag-theme-quartz';
+}
+syncGridTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncGridTheme);
+
+async function refundPurchase(purchase) {
+  if (!confirm(`Refund ${usd(purchase.total_cents)} to your PayPal wallet?`)) return;
+  try {
+    await api(`/api/purchases/${purchase.id}/refund`, { method: 'POST', body: {} });
+    toast(`Refunded ${usd(purchase.total_cents)} through PayPal`);
+  } catch (err) {
+    toast(err.message, { error: true });
+  }
+  refresh();
+}
