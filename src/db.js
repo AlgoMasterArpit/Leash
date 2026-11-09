@@ -130,6 +130,15 @@ export function createStore(path) {
         .get(since.toISOString()).total;
     },
 
+    totalsByStatusSince(since) {
+      const rows = db
+        .prepare(
+          'SELECT status, COUNT(*) AS count, COALESCE(SUM(total_cents), 0) AS cents FROM purchases WHERE created_at >= ? GROUP BY status',
+        )
+        .all(since.toISOString());
+      return Object.fromEntries(rows.map((r) => [r.status, { count: r.count, cents: r.cents }]));
+    },
+
     recentPurchases(sinceHours = 72) {
       const since = new Date(Date.now() - sinceHours * 3600_000).toISOString();
       return db
