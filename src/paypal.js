@@ -155,3 +155,25 @@ export async function refundCapture(captureId, { purchaseId, note }) {
   });
   return { refundId: refund.id, status: refund.status };
 }
+
+export async function verifyWebhook(headers, event) {
+  if (!config.PAYPAL_WEBHOOK_ID) return false;
+  const result = await request('POST', '/v1/notifications/verify-webhook-signature', {
+    body: {
+      auth_algo: headers['paypal-auth-algo'],
+      cert_url: headers['paypal-cert-url'],
+      transmission_id: headers['paypal-transmission-id'],
+      transmission_sig: headers['paypal-transmission-sig'],
+      transmission_time: headers['paypal-transmission-time'],
+      webhook_id: config.PAYPAL_WEBHOOK_ID,
+      webhook_event: event,
+    },
+  });
+  return result?.verification_status === 'SUCCESS';
+}
+
+export function createWebhook(url, eventTypes) {
+  return request('POST', '/v1/notifications/webhooks', {
+    body: { url, event_types: eventTypes.map((name) => ({ name })) },
+  });
+}
