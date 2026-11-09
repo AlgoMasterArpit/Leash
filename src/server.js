@@ -59,3 +59,25 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.static(fileURLToPath(new URL('../public', import.meta.url)), { extensions: ['html'] }));
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+function maskEmail(email) {
+  if (!email) return null;
+  const [user, domain] = email.split('@');
+  return `${user.slice(0, 3)}…@${domain}`;
+}
+
+app.get('/api/state', (req, res) => {
+  const wallet = leash.wallet();
+  res.json({
+    rules: store.getSetting('rules'),
+    wallet: wallet && { connected: true, payerEmail: maskEmail(wallet.payerEmail), connectedAt: wallet.connectedAt ?? null },
+    budget: leash.budget(),
+  });
+});
+
+app.put('/api/rules', async (req, res) => {
+  const { text } = RulesBody.parse(req.body);
+  res.json(await leash.setRules(text));
+});
+
+app.get('/api/catalog', (req, res) => res.json(catalog.listProducts()));
