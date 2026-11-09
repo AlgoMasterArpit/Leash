@@ -164,8 +164,9 @@ const columnDefs = [
   {
     field: 'created_at',
     headerName: 'When',
-    width: 100,
+    width: 105,
     sort: 'desc',
+    filter: false,
     valueFormatter: (p) => (p.node.rowPinned ? '' : timeAgo(p.value)),
   },
   {
@@ -193,7 +194,7 @@ const columnDefs = [
   {
     colId: 'outcome',
     headerName: 'Outcome',
-    width: 150,
+    width: 165,
     valueGetter: (p) => (p.node.rowPinned ? '' : statusOf(p.data)[0]),
     cellRenderer: (p) => (p.node.rowPinned ? '' : statusPill(p.data)),
   },
@@ -258,6 +259,7 @@ const ledger = agGrid.createGrid($('ledger'), {
 });
 
 function renderLedger(purchases) {
+  $('ledger-wrap').classList.toggle('has-rows', purchases.length > 0);
   ledger.setGridOption('rowData', purchases);
   ledger.setGridOption('pinnedBottomRowData', totalsRow(purchases));
 }
