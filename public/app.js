@@ -271,3 +271,86 @@ async function refundPurchase(purchase) {
   }
   refresh();
 }
+
+const CHECK_MARK = { pass: '✓', review: '!', block: '✕' };
+
+function closeDrawer() {
+  document.body.classList.remove('drawer-open');
+  $('drawer').setAttribute('aria-hidden', 'true');
+}
+
+async function openDrawer(id) {
+  let p;
+  try {
+    p = await api(`/api/purchases/${id}`);
+  } catch (err) {
+    return toast(err.message, { error: true });
+  }
+  const paypalRows = [
+    ['Order', p.order_id],
+    ['Capture', p.capture_id],
+    ['Capture status', p.capture_status],
+    ['Refund', p.refund_id],
+  ].filter(([, v]) => v);
+
+  $('drawer').innerHTML = `
+    <div class="drawer-top">
+      <span class="eyebrow mono">${escapeHtml(p.id)}</span>
+      <button class="btn btn-ghost btn-sm" id="drawer-close" type="button" aria-label="Close details">Close</button>
+    </div>
+    <h2>${usd(p.total_cents)} · ${escapeHtml(p.vendors)}</h2>
+    <div class="drawer-status">${statusPill(p)}<span class="card-sub">AI risk ${p.risk}/100</span></div>
+
+    <section>
+      <div class="eyebrow">Agent request</div>
+      <dl class="kv">
+        <dt>Agent</dt><dd>${escapeHtml(p.agent)}</dd>
+        <dt>Reason</dt><dd>${escapeHtml(p.reason)}</dd>
+        <dt>Items</dt><dd>${p.items.map((i) => `${i.qty}× ${escapeHtml(i.name)} @ $${escapeHtml(i.unitPrice)}`).join('<br>')}</dd>
+      </dl>
+    </section>
+
+    <section>
+      <div class="eyebrow">Checks</div>
+      <ul class="checks">
+        ${p.checks
+          .map(
+            (c) =>
+              `<li class="${escapeHtml(c.status)}"><span class="mark">${CHECK_MARK[c.status] ?? ''}</span><div>${escapeHtml(c.label)}<small>${escapeHtml(c.detail)}</small></div></li>`,
+          )
+          .join('')}
+      </ul>
+    </section>
+
+    <section>
+      <div class="eyebrow">AI risk review</div>
+      <p class="drawer-summary">${escapeHtml(p.ai_summary)}</p>
+      <ul class="drawer-reasons">${p.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+    </section>
+
+    ${
+      paypalRows.length
+        ? `<section><div class="eyebrow">PayPal</div><dl class="kv">${paypalRows
+            .map(([k, v]) => `<dt>${k}</dt><dd class="mono">${escapeHtml(v)}</dd>`)
+            .join('')}</dl></section>`
+        : ''
+    }
+    ${p.error ? `<section><div class="eyebrow">Error</div><p class="drawer-error">${escapeHtml(p.error)}</p></section>` : ''}
+
+    <section>
+      <div class="eyebrow">Audit trail</div>
+      <ol class="events">${p.events
+        .map((e) => `<li><span class="mono">${new Date(e.created_at).toLocaleTimeString()}</span> · ${escapeHtml(e.type)}</li>`)
+        .join('')}</ol>
+    </section>`;
+
+  $('drawer-close').addEventListener('click', closeDrawer);
+  document.body.classList.add('drawer-open');
+  $('drawer').setAttribute('aria-hidden', 'false');
+  $('drawer-close').focus();
+}
+
+$('drawer-backdrop').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeDrawer();
+});
