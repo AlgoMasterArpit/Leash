@@ -147,3 +147,11 @@ export async function chargeVault({ vaultId, purchaseId, vendorSummary, items, t
     captureStatus: capture?.status ?? null,
   };
 }
+
+export async function refundCapture(captureId, { purchaseId, note }) {
+  const refund = await request('POST', `/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
+    requestId: `refund-${purchaseId}`,
+    body: { invoice_id: `${purchaseId}-refund`, note_to_payer: note?.slice(0, 255) },
+  });
+  return { refundId: refund.id, status: refund.status };
+}
