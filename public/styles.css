@@ -674,3 +674,115 @@ code,
     transition: none !important;
   }
 }
+
+.approvals {
+  display: grid;
+  gap: 10px;
+}
+
+.approvals:empty::after {
+  content: 'Nothing waiting. Purchases over your auto-approve limit will appear here.';
+  display: block;
+  padding: 28px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--faint);
+}
+
+.approval {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
+  background: color-mix(in srgb, var(--warn-soft) 55%, var(--surface));
+  animation: rise 0.25s ease both;
+}
+
+.approval-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.approval-head .amount {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.approval .meta {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.approval .why {
+  margin: 8px 0 10px;
+  font-size: 13px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approval-actions .btn-primary {
+  flex: 1;
+}
+
+.ledger-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ledger-tools input {
+  width: 220px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+#ledger {
+  height: 420px;
+  width: 100%;
+}
+
+#ledger .ag-row {
+  cursor: pointer;
+}
+
+.risk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.risk-bar {
+  flex: 1;
+  height: 6px;
+  max-width: 64px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.risk-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+@media (max-width: 640px) {
+  .card-head {
+    flex-wrap: wrap;
+  }
+  .ledger-tools input {
+    width: 100%;
+  }
+  .ledger-tools {
+    width: 100%;
+  }
+}
