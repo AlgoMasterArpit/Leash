@@ -12,6 +12,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   PUBLIC_URL: z.string().url().default('http://localhost:3000'),
   LEASH_AGENT_KEY: z.string().optional(),
+  DASHBOARD_PASSWORD: z.string().optional(),
   DATABASE_PATH: z.string().default('leash.db'),
 });
 
