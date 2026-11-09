@@ -777,6 +777,20 @@ code,
   --ag-wrapper-border-radius: 12px;
 }
 
+#ledger .ag-cell {
+  display: flex;
+  align-items: center;
+}
+
+#ledger .ag-right-aligned-cell {
+  justify-content: flex-end;
+}
+
+.ledger-wrap.has-rows .ag-center-cols-viewport,
+.ledger-wrap.has-rows .ag-center-cols-container {
+  min-height: 0 !important;
+}
+
 .cell-stack {
   display: flex;
   flex-direction: column;
@@ -805,6 +819,7 @@ code,
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   height: 100%;
 }
 
@@ -884,6 +899,11 @@ body.drawer-open .drawer-backdrop {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.drawer-top .eyebrow {
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .drawer-status {
