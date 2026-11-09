@@ -111,6 +111,10 @@ export function createStore(path) {
       return decodeRow(db.prepare('SELECT * FROM purchases WHERE id = ?').get(id));
     },
 
+    findPurchaseByCaptureId(captureId) {
+      return decodeRow(db.prepare('SELECT * FROM purchases WHERE capture_id = ?').get(captureId));
+    },
+
     listPurchases(limit = 200) {
       return db
         .prepare('SELECT * FROM purchases ORDER BY created_at DESC LIMIT ?')
