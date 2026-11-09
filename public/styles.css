@@ -832,6 +832,37 @@ body.drawer-open .drawer-backdrop {
   margin-top: 20px;
 }
 
+.drawer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.drawer-status .card-sub {
+  margin: 0;
+}
+
+.drawer-summary {
+  margin: 6px 0;
+}
+
+.drawer-reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.drawer-error {
+  color: var(--bad);
+}
+
 .checks {
   list-style: none;
   margin: 8px 0 0;
