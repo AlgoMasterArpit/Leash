@@ -154,3 +154,20 @@ app.post('/api/demo/reset', (req, res) => {
   leash.resetDemo();
   res.sendStatus(204);
 });
+
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err instanceof z.ZodError) {
+    return res.status(400).json({ error: 'Invalid request', issues: err.issues.map((i) => `${i.path.join('.')}: ${i.message}`) });
+  }
+  if (err instanceof AppError) return res.status(err.status).json({ error: err.message, code: err.code });
+  if (err instanceof paypal.PayPalError) {
+    console.error('PayPal error', err.debugId, err.message);
+    return res.status(502).json({ error: err.message, debugId: err.debugId });
+  }
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Malformed JSON body' });
+  console.error(err);
+  res.status(500).json({ error: 'Something went wrong' });
+});
