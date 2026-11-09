@@ -125,3 +125,32 @@ app.post('/api/purchases/:id/refund', async (req, res) => {
   const { note } = RefundBody.parse(req.body ?? {});
   res.json(await leash.refund(req.params.id, note));
 });
+
+// ponytail: one agent run at a time keeps Groq usage bounded on the shared demo; use per-user quotas with auth
+let agentBusy = false;
+
+app.post('/api/agent/run', async (req, res) => {
+  const { task } = AgentBody.parse(req.body);
+  if (agentBusy) throw new AppError(429, 'The agent is already running a task. Try again in a moment.');
+  agentBusy = true;
+
+  res.set({ 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
+  res.flushHeaders();
+  const emit = (event) => res.write(`${JSON.stringify(event)}\n`);
+
+  try {
+    await runAgent(task, emit);
+  } catch (err) {
+    console.error('Agent run failed', err);
+    emit({ type: 'error', message: err.message });
+  } finally {
+    agentBusy = false;
+    emit({ type: 'done' });
+    res.end();
+  }
+});
+
+app.post('/api/demo/reset', (req, res) => {
+  leash.resetDemo();
+  res.sendStatus(204);
+});
