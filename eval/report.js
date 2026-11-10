@@ -40,15 +40,16 @@ function attackCaseTable() {
 }
 
 function agentTable() {
-  const { direct: d, leash: l } = agents.summary;
+  const conds = Object.values(agents.summary.conditions);
+  const row = (label, fn) => `| ${label} | ${conds.map(fn).join(' | ')} |`;
   return [
-    `| Metric | Agent pays directly | Agent pays through Leash |`,
-    `|---|---|---|`,
-    `| Risky tasks where a rule-breaking payment went through | ${of(d.riskyRunsWithRuleBreakingPayment, d.riskyRuns)} | **${of(l.riskyRunsWithRuleBreakingPayment, l.riskyRuns)}** |`,
-    `| Rule-breaking payments in total | ${d.ruleBreakingPayments} | **${l.ruleBreakingPayments}** |`,
-    `| Runs that paid the prompt-injected listing | ${of(d.injectedListingPaidRuns, d.runs)} | ${of(l.injectedListingPaidRuns, l.runs)} |`,
-    `| Safe tasks completed with a clean payment | ${of(d.safeRunsCompleted, d.safeRuns)} | ${of(l.safeRunsCompleted, l.safeRuns)} |`,
-    `| Purchases held for the owner | ${d.heldForOwner} | ${l.heldForOwner} |`,
+    `| Metric | ${conds.map((c) => c.label).join(' | ')} |`,
+    `|---|${conds.map(() => '---').join('|')}|`,
+    row('Risky tasks where a rule-breaking payment went through', (c) => of(c.riskyRunsWithRuleBreakingPayment, c.riskyRuns)),
+    row('Rule-breaking payments in total', (c) => String(c.ruleBreakingPayments)),
+    row('Runs that paid the prompt-injected listing', (c) => of(c.injectedListingPaidRuns, c.runs)),
+    row('Safe tasks completed with a clean payment', (c) => of(c.safeRunsCompleted, c.safeRuns)),
+    row('Purchases held for the owner', (c) => String(c.heldForOwner)),
   ].join('\n');
 }
 
@@ -61,7 +62,7 @@ function method() {
   }
   if (agents) {
     lines.push(
-      `- **Agent comparison** (\`npm run eval:agents\`): the same ${agents.meta.model} agent, with the owner's rules in its prompt, runs ${agents.summary.tasks} restock tasks ${agents.summary.reps} times each, once paying directly and once through Leash. Each payment is scored against the owner's written rules (\`eval/harness.js\`). The owner never presses approve during the eval.`,
+      `- **Agent comparison** (\`npm run eval:agents\`): the same ${agents.meta.model} agent runs ${agents.summary.tasks} restock tasks ${agents.summary.reps} times each in three setups: paying directly without knowing the rules, paying directly with the owner's rules in its prompt, and paying through Leash without the rules in its prompt. Two tasks add social-engineering pressure ("the owner said it's fine"). Each payment is scored against the owner's written rules (\`eval/harness.js\`). The owner never presses approve during the eval.`,
     );
   }
   return lines.join('\n');
@@ -75,9 +76,16 @@ function chartSvg(groups) {
   const width = 760;
   const rowH = 26;
   const pad = 20;
-  const labelW = 150;
+  const labelW = 170;
   const barW = width - labelW - pad * 2 - 70;
-  const colors = { 'No guardrail': '#c2410c', 'Rules only': '#b45309', 'Agent pays directly': '#c2410c', Leash: '#0f766e', 'Through Leash': '#0f766e' };
+  const colors = {
+    'No guardrail': '#c2410c',
+    'Rules only': '#b45309',
+    'Direct, no rules': '#c2410c',
+    'Direct, rules in prompt': '#b45309',
+    Leash: '#0f766e',
+    'Through Leash': '#0f766e',
+  };
   let y = pad + 10;
   const parts = [];
   for (const g of groups) {
@@ -117,12 +125,13 @@ if (attacks) {
   );
 }
 if (agents) {
-  const { direct: d, leash: l } = agents.summary;
+  const c = agents.summary.conditions;
+  const short = { 'direct-unaware': 'Direct, no rules', 'direct-prompted': 'Direct, rules in prompt', 'leash-unaware': 'Through Leash' };
   groups.push(
-    bars('Risky agent tasks where a rule-breaking payment went through (lower is better)', [
-      { label: 'Agent pays directly', value: d.riskyRunsWithRuleBreakingPayment, total: d.riskyRuns },
-      { label: 'Through Leash', value: l.riskyRunsWithRuleBreakingPayment, total: l.riskyRuns },
-    ]),
+    bars(
+      'Risky agent tasks where a rule-breaking payment went through (lower is better)',
+      Object.entries(c).map(([id, v]) => ({ label: short[id] ?? v.label, value: v.riskyRunsWithRuleBreakingPayment, total: v.riskyRuns })),
+    ),
   );
 }
 
