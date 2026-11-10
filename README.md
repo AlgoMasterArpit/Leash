@@ -84,6 +84,15 @@ sequenceDiagram
 ![Leash evaluation results](docs/results.svg)
 
 <!-- results:start -->
+#### Attack suite
+
+| Metric | No guardrail | Rules only | Leash |
+|---|---|---|---|
+| Attacks stopped before payment | 0 of 30 | 21 of 30 | **30 of 30** |
+| Safe purchases paid automatically | 15 of 15 | 15 of 15 | 15 of 15 |
+| Decision time p50 / p95 | n/a | n/a | 4.4 s / 8.4 s |
+
+- **Attack suite** (`npm run eval:attacks`): 10 attack cases and 5 legitimate purchases, each run 3 times through Leash's real decision pipeline (openai/gpt-oss-120b judge, meta-llama/llama-prompt-guard-2-86m). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.
 <!-- results:end -->
 
 Full tables, every case and every run: [RESULTS.md](RESULTS.md).
@@ -148,7 +157,8 @@ Design decisions that make it safe to hand an agent real money:
 | **Groq `openai/gpt-oss-120b`** | Rule compiler (`src/ai.js`) | Turns the owner's plain-English rules into a validated JSON policy (Zod-checked) |
 | **Groq `openai/gpt-oss-120b`** | AI risk judge (`src/ai.js`) | Reviews each purchase against the owner's intent, the agent's reason, recent purchases and the check results. Returns a verdict, a 0–100 risk score and reasons |
 | **Groq `openai/gpt-oss-120b`** | Demo restock agent (`src/agent.js`) | A tool-calling agent that searches suppliers, checks the budget and requests purchases. It is deliberately compliant, to show that Leash doesn't depend on the agent behaving |
-| **Groq `meta-llama/llama-prompt-guard-2-86m`** | Injection scan (`src/ai.js`) | Scores agent reasons and vendor listings for prompt injection. A score of 0.5 or higher blocks the purchase |
+| **Groq `meta-llama/llama-prompt-guard-2-86m`** | Injection scan (`src/ai.js`, `src/segments.js`) | Scores the agent's reason and every vendor listing, both whole and sentence by sentence, for prompt injection. A score of 0.5 or higher blocks the purchase. Sentence-level scanning matters: our injected listing scores 0.39 as a whole but 0.999 for the injected sentence alone |
+| **Groq `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`** | Fallback models (`src/groq.js`) | Used automatically when the primary model's daily quota runs out |
 | **Model Context Protocol SDK** | `src/mcp.js` | Exposes Leash as tools any MCP-compatible agent can call |
 
 Sponsor tools: **AG Grid** (ledger: custom cell renderers, pinned totals row, quick filter, number filters, pagination, CSV export, row-click audit drawer) and **Render** (hosting, via the `render.yaml` blueprint).
@@ -190,6 +200,7 @@ Requirements: Node.js 22.13+ (Node 24 recommended), a [PayPal developer](https:/
 |---|---|---|
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | yes | Sandbox REST app credentials |
 | `GROQ_API_KEY` | yes | LLM and Prompt Guard |
+| `GROQ_MODEL`, `GROQ_FALLBACK_MODELS` | no | Primary model and comma-separated fallbacks for when a daily quota runs out |
 | `PUBLIC_URL` | for deploys | Base URL used for the PayPal return URL and webhooks |
 | `PAYPAL_VAULT_ID` | no | Pre-connect a vaulted wallet, so a fresh deploy works without the connect step |
 | `PAYPAL_WEBHOOK_ID` | no | Enables webhook signature verification (`npm run webhook:register` creates one) |
@@ -283,7 +294,7 @@ Leash is a working prototype on the PayPal sandbox. These are the limits to know
 - **The AI judge can be wrong.** It can only tighten a decision, so a wrong call means an extra owner approval, never an unauthorized payment. Prompt Guard scores are probabilistic, and OWASP notes there is no fool-proof defense against prompt injection, which is why the deterministic rules always run.
 - **Single process.** The budget lock lives in memory. Running several instances would need a database-level lock.
 - **The evaluation uses a fake PayPal.** The attack suite and agent comparison call the real AI models and decision code but record payments instead of sending them, so they can run unattended. Real sandbox payments were checked separately on the live demo.
-- **Groq's free tier is slow under load.** At 8,000 tokens per minute, back-to-back agent runs wait for the rate limit, which shows up in the measured decision times.
+- **Groq's free tier has tight limits.** It allows 8,000 tokens per minute and 200,000 per day for each model. Back-to-back agent runs wait for the per-minute limit, which shows up in the measured decision times. When a model's daily quota runs out, Leash falls back to the next model in `GROQ_FALLBACK_MODELS` (by default `gpt-oss-20b`, then `qwen3.8-27b`). If every model is exhausted, purchases go to the owner rather than being auto-approved. A production deployment should use a paid tier.
 
 ## Built during the hackathon
 
