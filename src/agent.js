@@ -78,7 +78,7 @@ function summarizePurchase(p) {
   };
 }
 
-export function createAgent({ chat, leash, catalog }) {
+export function createAgent({ chat, leash, catalog, systemPrompt = SYSTEM_PROMPT, agentName = AGENT_NAME }) {
   async function runTool(name, args) {
     if (name === 'search_catalog') {
       return catalog.searchProducts(args.query).map((p) => ({
@@ -98,7 +98,7 @@ export function createAgent({ chat, leash, catalog }) {
       };
     }
     if (name === 'request_purchase') {
-      const purchase = await leash.requestPurchase({ agent: AGENT_NAME, reason: args.reason, items: args.items });
+      const purchase = await leash.requestPurchase({ agent: agentName, reason: args.reason, items: args.items });
       return { purchase, result: summarizePurchase(purchase) };
     }
     throw new Error(`Unknown tool ${name}`);
@@ -106,7 +106,7 @@ export function createAgent({ chat, leash, catalog }) {
 
   return async function run(task, emit) {
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: task },
     ];
 
