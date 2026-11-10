@@ -38,6 +38,20 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
     return store.spentSinceCents(startOfWeek());
   }
 
+  function recentAutoPaidCents(agent, items) {
+    const vendors = new Set(items.map((i) => i.vendorName));
+    return store
+      .recentPurchases(24)
+      .filter(
+        (p) =>
+          p.status === 'paid' &&
+          p.decided_by === 'policy' &&
+          p.agent === agent &&
+          p.items.some((i) => vendors.has(i.vendorName)),
+      )
+      .reduce((sum, p) => sum + p.total_cents, 0);
+  }
+
   function resolveItems(requested) {
     return requested.map(({ sku, qty }) => {
       const product = catalog.findProduct(sku);
@@ -145,7 +159,13 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
       const items = resolveItems(requested);
       const totalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.qty, 0);
-      const preview = evaluateHardRules({ rules: policy, items, totalCents, spentCents: spentThisWeek() });
+      const preview = evaluateHardRules({
+        rules: policy,
+        items,
+        totalCents,
+        spentCents: spentThisWeek(),
+        recentAutoPaidCents: recentAutoPaidCents(agent, items),
+      });
       const review = await aiReview({
         rulesText,
         rules: policy,
@@ -159,7 +179,13 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       });
 
       return serialized(async () => {
-        const hard = evaluateHardRules({ rules: policy, items, totalCents, spentCents: spentThisWeek() });
+        const hard = evaluateHardRules({
+          rules: policy,
+          items,
+          totalCents,
+          spentCents: spentThisWeek(),
+          recentAutoPaidCents: recentAutoPaidCents(agent, items),
+        });
         const injected = review.injectionScore != null && review.injectionScore >= INJECTION_THRESHOLD;
         const checks = [
           ...hard.checks,
