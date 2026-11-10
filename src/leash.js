@@ -29,6 +29,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
   function wallet() {
     const saved = store.getSetting('wallet');
+    if (saved?.disconnected) return null;
     if (saved) return saved;
     if (seedVaultId) return { vaultId: seedVaultId, payerEmail: null, seeded: true };
     return null;
@@ -148,8 +149,8 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
     async disconnect() {
       const current = store.getSetting('wallet');
-      if (current) await paypal.deletePaymentToken(current.vaultId).catch(() => {});
-      store.deleteSetting('wallet');
+      if (current?.vaultId) await paypal.deletePaymentToken(current.vaultId).catch(() => {});
+      store.setSetting('wallet', { disconnected: true, disconnectedAt: new Date().toISOString() });
       store.logEvent('wallet.disconnected');
     },
 

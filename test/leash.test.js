@@ -132,6 +132,14 @@ test('previews a decision without charging or recording anything', async () => {
   assert.equal(leash.previewPurchase({ agent: 'test-agent', items: [{ sku: 'KOS-TRIAL', qty: 1 }] }).decision, 'block');
 });
 
+test('disconnecting stops payments even when a seed vault is configured', async () => {
+  const { leash, charges } = setup();
+  await leash.disconnect();
+  assert.equal(leash.wallet(), null);
+  await assert.rejects(buy(leash, [{ sku: 'CC-NAP-200', qty: 1 }]), /Connect a PayPal account first/);
+  assert.equal(charges.length, 0);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);
