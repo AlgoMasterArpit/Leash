@@ -11,6 +11,7 @@ const AGENT_ROUTES = [
   ['GET', /^\/api\/catalog$/],
   ['GET', /^\/api\/state$/],
   ['POST', /^\/api\/purchases$/],
+  ['POST', /^\/api\/purchases\/preview$/],
   ['GET', /^\/api\/purchases\/[\w-]+$/],
 ];
 

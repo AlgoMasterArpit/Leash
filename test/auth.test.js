@@ -38,6 +38,7 @@ test('compares secrets without short-circuiting on length', () => {
 test('recognizes the routes agents are allowed to call', () => {
   assert.ok(isAgentRoute('POST', '/api/purchases'));
   assert.ok(isAgentRoute('GET', '/api/purchases/pur_abc123'));
+  assert.ok(isAgentRoute('POST', '/api/purchases/preview'));
   assert.ok(!isAgentRoute('POST', '/api/purchases/pur_abc123/approve'));
   assert.ok(!isAgentRoute('PUT', '/api/rules'));
 });
