@@ -1,4 +1,5 @@
 import { formatCents } from './money.js';
+import { PurchaseBody } from './schemas.js';
 
 export const AGENT_NAME = 'Restock agent';
 const MAX_STEPS = 8;
@@ -98,7 +99,8 @@ export function createAgent({ chat, leash, catalog, systemPrompt = SYSTEM_PROMPT
       };
     }
     if (name === 'request_purchase') {
-      const purchase = await leash.requestPurchase({ agent: agentName, reason: args.reason, items: args.items });
+      const request = PurchaseBody.parse({ agent: agentName, reason: args.reason, items: args.items });
+      const purchase = await leash.requestPurchase(request);
       return { purchase, result: summarizePurchase(purchase) };
     }
     throw new Error(`Unknown tool ${name}`);
