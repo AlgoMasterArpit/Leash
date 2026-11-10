@@ -288,7 +288,11 @@ $('ledger-export').addEventListener('click', () => {
   ledger.exportDataAsCsv({
     fileName: `leash-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
     columnKeys: ['created_at', 'purchase', 'agent', 'total_cents', 'outcome', 'risk', 'ai_summary', 'capture_id'],
-    processCellCallback: (p) => (p.column.getColId() === 'total_cents' ? (p.value / 100).toFixed(2) : p.value),
+    processCellCallback: (p) => {
+      if (p.column.getColId() === 'total_cents') return (p.value / 100).toFixed(2);
+      const value = p.value == null ? '' : String(p.value);
+      return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    },
   });
 });
 
