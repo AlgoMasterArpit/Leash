@@ -7,7 +7,9 @@ const load = (name) => {
 };
 
 const attacks = load('attacks');
-const agents = load('agents');
+const agentsRaw = load('agents');
+const agents = agentsRaw?.summary?.conditions ? agentsRaw : null;
+if (agentsRaw && !agents) console.warn('eval/results/agents.json is from an older eval format; skipping it. Re-run npm run eval:agents.');
 if (!attacks && !agents) {
   console.error('No results yet. Run npm run eval:attacks and npm run eval:agents first.');
   process.exit(1);
