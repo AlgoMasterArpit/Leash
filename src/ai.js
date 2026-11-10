@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { chatJson, injectionScore } from './groq.js';
-import { RulesSchema } from './rules.js';
+import { RulesSchema, resolveVendors } from './rules.js';
+import { AppError } from './errors.js';
 import { toCents, formatCents } from './money.js';
 import { VENDORS } from './catalog.js';
 
@@ -10,6 +11,7 @@ const CompiledSchema = z.object({
   weeklyBudget: z.number().nonnegative().nullable(),
   autoApproveLimit: z.number().nonnegative().nullable(),
   allowedVendors: z.array(z.string()).default([]),
+  mentionedVendors: z.array(z.string()).default([]),
   blockedCategories: z.array(z.string()).default([]),
   blockRecurring: z.boolean().default(false),
   requireVerifiedVendors: z.boolean().default(true),
@@ -27,6 +29,7 @@ Return exactly this JSON shape:
   "weeklyBudget": number in USD or null if not stated,
   "autoApproveLimit": number in USD above which the owner must approve, or null if not stated,
   "allowedVendors": [full vendor names from the known list that the owner allows; [] if any vendor is fine],
+  "mentionedVendors": [every vendor or store name the owner wrote, copied exactly as written, known or not],
   "blockedCategories": [categories from the known list the owner forbids],
   "blockRecurring": true if the owner forbids subscriptions, trials or recurring charges,
   "requireVerifiedVendors": true unless the owner explicitly allows unverified sellers,
@@ -37,12 +40,21 @@ Map nicknames to full vendor names (e.g. "BeanBros" -> "BeanBros Coffee Supply")
 
 export async function compileRules(text) {
   const raw = CompiledSchema.parse(await chatJson({ system: COMPILE_PROMPT, user: text }));
-  const known = new Map(Object.values(VENDORS).map((v) => [v.name.toLowerCase(), v.name]));
+  const knownNames = Object.values(VENDORS).map((v) => v.name);
+  const vendors = resolveVendors(raw.allowedVendors, knownNames);
+  const unknown = [...vendors.unknown, ...resolveVendors(raw.mentionedVendors, knownNames).unknown];
+  if (unknown.length) {
+    throw new AppError(
+      422,
+      `Leash doesn't know these vendors: ${[...new Set(unknown)].join(', ')}. Known vendors: ${knownNames.join(', ')}.`,
+      'UNKNOWN_VENDOR',
+    );
+  }
   const weeklyBudgetCents = toCents(raw.weeklyBudget ?? 100);
   const rules = RulesSchema.parse({
     weeklyBudgetCents,
     autoApproveLimitCents: raw.autoApproveLimit == null ? weeklyBudgetCents : toCents(raw.autoApproveLimit),
-    allowedVendors: raw.allowedVendors.map((v) => known.get(v.toLowerCase())).filter(Boolean),
+    allowedVendors: vendors.matched,
     blockedCategories: raw.blockedCategories.map((c) => c.toLowerCase()).filter((c) => CATEGORIES.includes(c)),
     blockRecurring: raw.blockRecurring,
     requireVerifiedVendors: raw.requireVerifiedVendors,
