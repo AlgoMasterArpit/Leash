@@ -12,7 +12,10 @@
     "dev": "node --disable-warning=ExperimentalWarning --watch --env-file=.env src/server.js",
     "mcp": "node src/mcp.js",
     "test": "node --test \"test/**/*.test.js\"",
-    "webhook:register": "node --env-file-if-exists=.env scripts/register-webhook.js"
+    "webhook:register": "node --env-file-if-exists=.env scripts/register-webhook.js",
+    "eval:attacks": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning eval/attacks.js",
+    "eval:agents": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning eval/agents.js",
+    "eval:report": "node eval/report.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
