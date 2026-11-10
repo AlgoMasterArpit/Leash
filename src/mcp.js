@@ -94,6 +94,35 @@ server.registerTool(
 );
 
 server.registerTool(
+  'preview_purchase',
+  {
+    title: 'Preview a purchase',
+    description:
+      "Check whether Leash would pay, hold or block a purchase under the owner's rules, without buying anything. The real request also runs an AI review that can only make it stricter.",
+    inputSchema: {
+      items: z
+        .array(z.object({ sku: z.string(), qty: z.number().int().min(1).max(100) }))
+        .min(1)
+        .describe('Products by SKU from search_catalog'),
+    },
+  },
+  async ({ items }) => {
+    try {
+      const preview = await leash('/api/purchases/preview', { method: 'POST', body: { agent: AGENT_NAME, items } });
+      return text({
+        would_be: { approve: 'paid automatically', review: 'held for the owner', block: 'blocked' }[preview.decision],
+        total: usd(preview.totalCents),
+        remaining_this_week: usd(preview.remainingCents),
+        failed_checks: preview.checks.filter((c) => c.status !== 'pass').map((c) => c.detail),
+        note: preview.note,
+      });
+    } catch (err) {
+      return failure(err);
+    }
+  },
+);
+
+server.registerTool(
   'request_purchase',
   {
     title: 'Request a purchase',
