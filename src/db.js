@@ -46,7 +46,19 @@ export function openDatabase(path) {
       data        TEXT
     );
   `);
+  migrate(db);
   return db;
+}
+
+const COMMITTED = "('paid', 'payment_pending', 'processing')";
+
+function migrate(db) {
+  const columns = new Set(db.prepare('PRAGMA table_info(purchases)').all().map((c) => c.name));
+  if (!columns.has('paid_at')) db.exec('ALTER TABLE purchases ADD COLUMN paid_at TEXT');
+  if (!columns.has('idempotency_key')) db.exec('ALTER TABLE purchases ADD COLUMN idempotency_key TEXT');
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS purchases_idempotency_key ON purchases (idempotency_key) WHERE idempotency_key IS NOT NULL',
+  );
 }
 
 function now() {
@@ -111,6 +123,10 @@ export function createStore(path) {
       return decodeRow(db.prepare('SELECT * FROM purchases WHERE id = ?').get(id));
     },
 
+    findPurchaseByIdempotencyKey(key) {
+      return decodeRow(db.prepare('SELECT * FROM purchases WHERE idempotency_key = ?').get(key));
+    },
+
     findPurchaseByCaptureId(captureId) {
       return decodeRow(db.prepare('SELECT * FROM purchases WHERE capture_id = ?').get(captureId));
     },
@@ -125,7 +141,7 @@ export function createStore(path) {
     spentSinceCents(since) {
       return db
         .prepare(
-          "SELECT COALESCE(SUM(total_cents), 0) AS total FROM purchases WHERE status = 'paid' AND created_at >= ?",
+          `SELECT COALESCE(SUM(total_cents), 0) AS total FROM purchases WHERE status IN ${COMMITTED} AND COALESCE(paid_at, created_at) >= ?`,
         )
         .get(since.toISOString()).total;
     },
@@ -143,7 +159,7 @@ export function createStore(path) {
       const since = new Date(Date.now() - sinceHours * 3600_000).toISOString();
       return db
         .prepare(
-          "SELECT * FROM purchases WHERE created_at >= ? AND status IN ('paid', 'pending_owner') ORDER BY created_at DESC",
+          "SELECT * FROM purchases WHERE COALESCE(paid_at, created_at) >= ? AND status IN ('paid', 'payment_pending', 'processing', 'pending_owner') ORDER BY created_at DESC",
         )
         .all(since)
         .map(decodeRow);
