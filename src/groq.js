@@ -21,9 +21,9 @@ async function post(body, attempt = 0) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(30_000),
   });
-  if (RETRYABLE.has(res.status) && attempt < 3) {
+  if (RETRYABLE.has(res.status) && attempt < 5) {
     const retryAfter = Number(res.headers.get('retry-after')) || 2 ** attempt;
-    await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+    await new Promise((r) => setTimeout(r, Math.min(retryAfter + 0.5, 60) * 1000));
     return post(body, attempt + 1);
   }
   const data = await res.json().catch(() => null);
