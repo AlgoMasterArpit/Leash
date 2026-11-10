@@ -45,8 +45,16 @@ async function accessToken() {
   return pendingToken;
 }
 
-async function request(method, path, { body, requestId } = {}) {
-  const res = await fetch(`${config.paypalBase}${path}`, {
+export class PayPalUnreachableError extends Error {
+  constructor(cause) {
+    super('Could not reach PayPal. Please try again in a moment.');
+    this.name = 'PayPalUnreachableError';
+    this.cause = cause;
+  }
+}
+
+async function send(method, path, { body, requestId }) {
+  return fetch(`${config.paypalBase}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
@@ -55,7 +63,23 @@ async function request(method, path, { body, requestId } = {}) {
       ...(requestId && { 'PayPal-Request-Id': requestId }),
     },
     body: body && JSON.stringify(body),
+    signal: AbortSignal.timeout(20_000),
   });
+}
+
+async function request(method, path, { body, requestId } = {}) {
+  const retrySafe = method === 'GET' || Boolean(requestId);
+  let res;
+  try {
+    res = await send(method, path, { body, requestId });
+  } catch (err) {
+    if (!retrySafe) throw new PayPalUnreachableError(err);
+    try {
+      res = await send(method, path, { body, requestId });
+    } catch (retryErr) {
+      throw new PayPalUnreachableError(retryErr);
+    }
+  }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new PayPalError(res.status, data);
