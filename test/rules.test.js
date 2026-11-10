@@ -64,6 +64,17 @@ test('vendor matching ignores case', () => {
   assert.equal(result.decision, 'approve');
 });
 
+test('holds orders split to stay under the auto-approve limit', () => {
+  const items = [{ ...findProduct('BB-ESP-1KG'), qty: 1 }];
+  const split = evaluateHardRules({ rules, items, totalCents: 2400, spentCents: 4800, recentAutoPaidCents: 4800 });
+  assert.equal(split.decision, 'review');
+  assert.equal(statusOf(split, 'splitting'), 'review');
+
+  const fine = evaluateHardRules({ rules, items, totalCents: 2400, spentCents: 1200, recentAutoPaidCents: 1200 });
+  assert.equal(fine.decision, 'approve');
+  assert.equal(statusOf(fine, 'splitting'), 'pass');
+});
+
 test('strictest picks the most restrictive decision', () => {
   assert.equal(strictest('approve', 'review'), 'review');
   assert.equal(strictest('review', 'block', 'approve'), 'block');
