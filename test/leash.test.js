@@ -220,6 +220,18 @@ test('a retried request with the same idempotency key is charged once', async ()
   assert.equal(charges.length, 1);
 });
 
+test('approving last week’s held purchases counts toward this week’s budget', async () => {
+  const { leash, store } = setup();
+  const lastWeek = new Date(Date.now() - 8 * 86400_000).toISOString();
+  const a = await buy(leash, [{ sku: 'KP-GRIND-01', qty: 2 }]);
+  const b = await buy(leash, [{ sku: 'KP-GRIND-01', qty: 2 }]);
+  store.updatePurchase(a.id, { created_at: lastWeek });
+  store.updatePurchase(b.id, { created_at: lastWeek });
+  assert.equal((await leash.approve(a.id)).status, 'paid');
+  assert.equal(leash.budget().spentCents, 17800);
+  await assert.rejects(leash.approve(b.id), /exceed the weekly budget/);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);
