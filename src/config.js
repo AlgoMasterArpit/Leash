@@ -8,6 +8,10 @@ const schema = z.object({
   PAYPAL_VAULT_ID: z.string().optional(),
   GROQ_API_KEY: z.string().min(1),
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+  GROQ_FALLBACK_MODELS: z
+    .string()
+    .default('openai/gpt-oss-20b,qwen/qwen3.8-27b')
+    .transform((v) => v.split(',').map((m) => m.trim()).filter(Boolean)),
   GROQ_GUARD_MODEL: z.string().default('meta-llama/llama-prompt-guard-2-86m'),
   PORT: z.coerce.number().int().positive().default(3000),
   PUBLIC_URL: z.string().url().default('http://localhost:3000'),
