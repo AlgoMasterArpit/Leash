@@ -7,13 +7,13 @@
 ![Built Nov 9 to 12, 2026](https://img.shields.io/badge/built-Nov%209%E2%80%9312%202026-555)
 ![PayPal sandbox](https://img.shields.io/badge/PayPal-sandbox-003087)
 
-**[Live demo](https://leash-v8l7.onrender.com)** (PayPal sandbox; the free tier can take about 50 seconds to wake up) · [Results](RESULTS.md) · [Run it locally](#run-locally)
+**[Live demo](https://leash-v8l7.onrender.com)** (PayPal sandbox; the free tier can take about 50 seconds to wake up) · [Results](RESULTS.md) · [Break-it review](REVIEW.md) · [Run it locally](#run-locally)
 
 ![Leash dashboard](docs/dashboard.png)
 
 *The owner's rules on top, the agent's attempts in the middle, and every decision in the AG Grid ledger. Here the agent tried a prompt-injected listing (blocked), switched to an approved supplier on its own (held for approval, because it's over $50), and auto-paid a small cup order through PayPal Vault.*
 
-**Contents:** [At a glance](#at-a-glance) · [Why it matters](#why-it-matters) · [Results](#results) · [What it does](#what-it-does) · [Decision pipeline](#the-decision-pipeline) · [PayPal integration](#paypal-integration) · [AI tools](#ai-tools-used) · [Try it](#try-it) · [Limits](#limits)
+**Contents:** [At a glance](#at-a-glance) · [Why it matters](#why-it-matters) · [How it works](#how-it-works-in-five-screens) · [Results](#results) · [What it does](#what-it-does) · [Decision pipeline](#the-decision-pipeline) · [PayPal integration](#paypal-integration) · [AI tools](#ai-tools-used) · [Try it](#try-it) · [Limits](#limits)
 
 ## At a glance
 
@@ -27,6 +27,57 @@
 - **Agents are becoming shoppers.** Bain estimates that "the US agentic commerce market could reach $300 to $500 billion by 2030, making up roughly 15% to 25% of overall e-commerce" ([Bain, Dec 2025](https://www.bain.com/insights/2030-forecast-how-agentic-ai-will-reshape-us-retail-snap-chart/)). PayPal is building for this with its [agent toolkit, MCP server and agentic commerce services](https://developer.paypal.com/ai-tools/get-started).
 - **Prompt rules don't hold.** OWASP ranks prompt injection as the top LLM risk ([LLM01:2025](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)), including *indirect* injection hidden in content the model reads, such as a product listing. OWASP's own wording: "it is unclear if there are fool-proof methods of prevention for prompt injection." So the guardrail has to sit outside the agent, where the money moves.
 - **Small businesses have no spend controls for agents.** Corporate cards with limits exist for people. Nothing like them exists for agents, and a café owner can't watch every purchase an agent makes.
+
+## How it works, in five screens
+
+**1. The owner writes rules like they'd brief a new employee.** Leash's AI turns them into an enforceable policy, shown on the right, so the owner can see exactly what will be enforced.
+
+![The rules editor: plain-English rules on the left, the compiled policy on the right](docs/step-1-rules.png)
+
+**2. The owner connects PayPal once.** Leash creates a PayPal Vault setup token, and the owner approves it on PayPal. From then on Leash can pay without the owner present, but only for purchases the rules allow.
+
+![PayPal sandbox approval screen for saving the wallet with Leash](docs/step-2-paypal.png)
+
+**3. An AI agent shops, and every purchase goes through Leash.** Here the agent looks for the cheapest espresso beans. That listing hides an instruction telling AI agents to ignore their rules, so Leash **blocks** it. The agent switches to an approved supplier on its own, and because that order is over $50, Leash **holds** it for the owner.
+
+![The agent timeline: a blocked prompt-injected listing, then a held order from an approved supplier](docs/step-3-agent.png)
+
+**4. The owner approves with one tap.** Leash re-checks the budget and charges the saved PayPal wallet with an itemized Orders v2 capture.
+
+![The approvals inbox with an Approve and pay button](docs/step-4-approve.png)
+
+**5. Every decision is explained and auditable.** Click any purchase to see each check, the AI's reasoning, the PayPal order and capture IDs, and the full audit trail. Paid purchases can be refunded through PayPal in one click.
+
+![The purchase drawer: every check, the prompt-injection flag, the AI review and the audit trail](docs/step-5-audit.png)
+
+### One purchase, end to end
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as AI agent
+    participant Leash
+    participant AI as Groq: judge + Prompt Guard
+    participant Owner
+    participant PayPal
+    Agent->>Leash: request_purchase(SKUs, reason)
+    Leash->>Leash: Look up real prices, run deterministic rules
+    Leash->>AI: Risk review + injection scan
+    AI-->>Leash: Verdict, risk score, reasons
+    Leash->>Leash: Final decision = strictest of all three
+    alt approve
+        Leash->>PayPal: Orders v2 with vault_id (idempotent)
+        PayPal-->>Leash: Captured
+        Leash-->>Agent: paid
+    else review
+        Leash-->>Agent: held for the owner
+        Owner->>Leash: Approve & pay
+        Leash->>PayPal: Orders v2 with vault_id
+    else block
+        Leash-->>Agent: blocked, with the reason
+    end
+    PayPal-->>Leash: Webhooks (completed, refunded) keep the ledger in sync
+```
 
 ## Results
 
@@ -73,7 +124,9 @@ Design decisions that make it safe to hand an agent real money:
 - **Fails safe.** If the AI judge is unavailable, the purchase goes to the owner instead of being auto-approved.
 - **No overspending under concurrency.** Final budget checks and charges run serially. Six simultaneous $48 orders against a $200 budget produce exactly four payments (covered by a test).
 - **Agents can't set prices.** Agents send SKUs and quantities, and Leash looks up the price itself.
-- **Splitting an order doesn't dodge the limit.** Auto-paid purchases from the same agent and vendor in the last 24 hours count toward the auto-approve limit, so two $48 orders don't slip past a $50 limit.
+- **Splitting an order doesn't dodge the limit.** Everything auto-paid to the same vendor in the last 24 hours counts toward the auto-approve limit, across every agent, so two $48 orders don't slip past a $50 limit, even under different agent names.
+- **Retries are safe.** Agents can send an `Idempotency-Key` header. Repeating a request with the same key returns the original purchase instead of charging again.
+- **Broken on purpose.** An independent break-it review found 14 ways around these guarantees. All are fixed and each one has a test. See [REVIEW.md](REVIEW.md).
 - **Idempotent payments.** Every PayPal write carries a `PayPal-Request-Id` derived from the purchase ID, so a retry never charges twice.
 - **Agents never get owner powers.** The agent key unlocks only the purchase routes. Approving, refunding and editing rules need the owner.
 
@@ -169,6 +222,7 @@ This exposes five tools: `search_catalog`, `check_budget`, `preview_purchase` (a
 curl -X POST http://localhost:3000/api/purchases \
   -H "Content-Type: application/json" \
   -H "x-leash-agent-key: $LEASH_AGENT_KEY" \
+  -H "Idempotency-Key: order-2026-11-10-napkins" \
   -d '{"agent":"my-agent","reason":"Out of napkins","items":[{"sku":"CC-NAP-200","qty":2}]}'
 ```
 
@@ -224,7 +278,7 @@ Leash is a working prototype on the PayPal sandbox. These are the limits to know
 
 - **Demo catalog.** Agents buy from a fixed catalog of five demo suppliers in `src/catalog.js`. Real deployments need real catalogs, for example PayPal Store Sync or agent shopping catalogs.
 - **One merchant receives every payment.** All charges go to the sandbox business account behind the app. Paying each supplier directly needs PayPal Multiparty, which is on the roadmap.
-- **One workspace, one owner.** There are no user accounts. The hosted demo is shared by everyone who opens it, and owner routes can be locked with `DASHBOARD_PASSWORD`.
+- **One workspace, one owner.** There are no user accounts. The hosted demo is shared by everyone who opens it and leaves owner routes open so judges can try them. A real deployment must set `DASHBOARD_PASSWORD`; without it, anyone who can reach the server can approve, and the agent key only gates purchase requests.
 - **Ephemeral storage on the free tier.** The hosted demo uses SQLite on Render's free disk, so the ledger resets on every redeploy. The saved PayPal wallet survives through `PAYPAL_VAULT_ID`.
 - **The AI judge can be wrong.** It can only tighten a decision, so a wrong call means an extra owner approval, never an unauthorized payment. Prompt Guard scores are probabilistic, and OWASP notes there is no fool-proof defense against prompt injection, which is why the deterministic rules always run.
 - **Single process.** The budget lock lives in memory. Running several instances would need a database-level lock.
