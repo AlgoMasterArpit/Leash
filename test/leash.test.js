@@ -122,6 +122,16 @@ test('holds the second half of a split order for the owner', async () => {
   assert.equal(charges.length, 2);
 });
 
+test('previews a decision without charging or recording anything', async () => {
+  const { leash, charges, store } = setup();
+  const preview = leash.previewPurchase({ agent: 'test-agent', items: [{ sku: 'KP-GRIND-01', qty: 1 }] });
+  assert.equal(preview.decision, 'review');
+  assert.equal(preview.totalCents, 8900);
+  assert.equal(charges.length, 0);
+  assert.equal(store.listPurchases().length, 0);
+  assert.equal(leash.previewPurchase({ agent: 'test-agent', items: [{ sku: 'KOS-TRIAL', qty: 1 }] }).decision, 'block');
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);
