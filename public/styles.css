@@ -444,7 +444,7 @@ code,
 
 .rules-input {
   width: 100%;
-  min-height: 112px;
+  min-height: 150px;
   resize: vertical;
   padding: 12px 14px;
   border-radius: 10px;
