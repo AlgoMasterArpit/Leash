@@ -15,6 +15,20 @@ export const RulesSchema = z.object({
   notes: z.string().default(''),
 });
 
+export function resolveVendors(names, knownNames) {
+  const matched = [];
+  const unknown = [];
+  for (const name of names) {
+    const needle = name.trim().toLowerCase();
+    const exact = knownNames.find((k) => k.toLowerCase() === needle);
+    const partial = needle.length >= 3 ? knownNames.filter((k) => k.toLowerCase().includes(needle)) : [];
+    const hit = exact ?? (partial.length === 1 ? partial[0] : null);
+    if (hit) matched.push(hit);
+    else unknown.push(name);
+  }
+  return { matched: [...new Set(matched)], unknown };
+}
+
 const RANK = { approve: 0, review: 1, block: 2 };
 const STATUS_TO_DECISION = { pass: 'approve', review: 'review', block: 'block' };
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateHardRules, strictest } from '../src/rules.js';
+import { evaluateHardRules, strictest, resolveVendors } from '../src/rules.js';
 import { findProduct } from '../src/catalog.js';
 
 const rules = {
@@ -73,6 +73,16 @@ test('holds orders split to stay under the auto-approve limit', () => {
   const fine = evaluateHardRules({ rules, items, totalCents: 2400, spentCents: 1200, recentAutoPaidCents: 1200 });
   assert.equal(fine.decision, 'approve');
   assert.equal(statusOf(fine, 'splitting'), 'pass');
+});
+
+test('resolves vendor nicknames and reports unknown vendors instead of dropping them', () => {
+  const known = ['BeanBros Coffee Supply', 'CupCo Packaging', 'KitchenPro Equipment'];
+  assert.deepEqual(resolveVendors(['CupCo', 'beanbros coffee supply'], known), {
+    matched: ['CupCo Packaging', 'BeanBros Coffee Supply'],
+    unknown: [],
+  });
+  assert.deepEqual(resolveVendors(['Costco'], known).unknown, ['Costco']);
+  assert.deepEqual(resolveVendors(['Co'], known).unknown, ['Co']);
 });
 
 test('strictest picks the most restrictive decision', () => {
