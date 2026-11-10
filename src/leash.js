@@ -39,15 +39,15 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
     return store.spentSinceCents(startOfWeek());
   }
 
-  function recentAutoPaidCents(agent, items) {
+  // Agent names are self-reported, so splitting is tracked per vendor across every agent.
+  function recentAutoPaidCents(items) {
     const vendors = new Set(items.map((i) => i.vendorName));
     return store
       .recentPurchases(24)
       .filter(
         (p) =>
-          p.status === 'paid' &&
+          ['paid', 'payment_pending', 'processing'].includes(p.status) &&
           p.decided_by === 'policy' &&
-          p.agent === agent &&
           p.items.some((i) => vendors.has(i.vendorName)),
       )
       .reduce((sum, p) => sum + p.total_cents, 0);
@@ -169,7 +169,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
         items,
         totalCents,
         spentCents: spentThisWeek(),
-        recentAutoPaidCents: recentAutoPaidCents(agent, items),
+        recentAutoPaidCents: recentAutoPaidCents(items),
       });
       const review = await aiReview({
         rulesText,
@@ -189,7 +189,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
           items,
           totalCents,
           spentCents: spentThisWeek(),
-          recentAutoPaidCents: recentAutoPaidCents(agent, items),
+          recentAutoPaidCents: recentAutoPaidCents(items),
         });
         const injected = review.injectionScore != null && review.injectionScore >= INJECTION_THRESHOLD;
         const checks = [
@@ -248,7 +248,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
         items,
         totalCents,
         spentCents,
-        recentAutoPaidCents: recentAutoPaidCents(agent, items),
+        recentAutoPaidCents: recentAutoPaidCents(items),
       });
       return {
         decision,
