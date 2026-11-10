@@ -210,6 +210,16 @@ test('webhooks follow allowed transitions and ignore partial refunds', async () 
   assert.equal(leash.handleWebhook({ event_type: 'PAYMENT.CAPTURE.DENIED', resource: { custom_id: blocked.id } }).status, 'blocked');
 });
 
+test('a retried request with the same idempotency key is charged once', async () => {
+  const { leash, charges } = setup();
+  const request = { agent: 'bot', reason: 'cups', items: [{ sku: 'CC-CUP12-50', qty: 2 }], idempotencyKey: 'order-42' };
+  const [a, b] = await Promise.all([leash.requestPurchase(request), leash.requestPurchase(request)]);
+  const c = await leash.requestPurchase(request);
+  assert.equal(a.id, b.id);
+  assert.equal(a.id, c.id);
+  assert.equal(charges.length, 1);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);

@@ -165,7 +165,9 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       store.logEvent('wallet.disconnected');
     },
 
-    async requestPurchase({ agent, reason, items: requested }) {
+    async requestPurchase({ agent, reason, items: requested, idempotencyKey }) {
+      const repeat = idempotencyKey && store.findPurchaseByIdempotencyKey(idempotencyKey);
+      if (repeat) return repeat;
       const { text: rulesText, rules: policy } = rules();
       if (!wallet()) throw new AppError(409, 'Connect a PayPal account first', 'NO_WALLET');
 
@@ -191,6 +193,8 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       });
 
       return serialized(async () => {
+        const raced = idempotencyKey && store.findPurchaseByIdempotencyKey(idempotencyKey);
+        if (raced) return raced;
         const hard = evaluateHardRules({
           rules: rules().rules,
           items,
@@ -243,6 +247,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
           ai_summary: review.verdict.summary,
           injection_score: review.injectionScore,
           decided_by: 'policy',
+          idempotency_key: idempotencyKey ?? null,
         });
         store.logEvent(`purchase.${decision}`, purchase.id, { totalCents, checks });
 
