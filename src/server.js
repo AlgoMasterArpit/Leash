@@ -109,6 +109,11 @@ app.delete('/api/wallet', async (req, res) => {
 app.get('/api/purchases', (req, res) => res.json(leash.listPurchases()));
 app.get('/api/purchases/:id', (req, res) => res.json(leash.getPurchase(req.params.id)));
 
+app.post('/api/purchases/preview', (req, res) => {
+  const { agent, items } = PurchaseBody.pick({ agent: true, items: true }).parse(req.body);
+  res.json(leash.previewPurchase({ agent, items }));
+});
+
 app.post('/api/purchases', async (req, res) => {
   const purchase = await leash.requestPurchase(PurchaseBody.parse(req.body));
   res.status(201).json(purchase);
