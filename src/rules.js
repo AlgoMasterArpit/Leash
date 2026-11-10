@@ -24,7 +24,7 @@ export function strictest(...decisions) {
 
 const usd = (cents) => `$${formatCents(cents)}`;
 
-export function evaluateHardRules({ rules, items, totalCents, spentCents }) {
+export function evaluateHardRules({ rules, items, totalCents, spentCents, recentAutoPaidCents = 0 }) {
   const checks = [];
   const add = (id, label, status, detail) => checks.push({ id, label, status, detail });
 
@@ -98,6 +98,19 @@ export function evaluateHardRules({ rules, items, totalCents, spentCents }) {
       ? `${usd(totalCents)} is over your ${usd(rules.autoApproveLimitCents)} auto-approve limit`
       : `Under your ${usd(rules.autoApproveLimitCents)} auto-approve limit`,
   );
+
+  if (!overLimit && recentAutoPaidCents > 0) {
+    const combined = totalCents + recentAutoPaidCents;
+    const split = combined > rules.autoApproveLimitCents;
+    add(
+      'splitting',
+      'Order splitting',
+      split ? 'review' : 'pass',
+      split
+        ? `With ${usd(recentAutoPaidCents)} auto-paid to the same vendor in the last 24 hours, this adds up to ${usd(combined)}, over your ${usd(rules.autoApproveLimitCents)} limit`
+        : `${usd(combined)} auto-paid to this vendor in the last 24 hours, under your limit`,
+    );
+  }
 
   return {
     decision: strictest(...checks.map((c) => STATUS_TO_DECISION[c.status])),
