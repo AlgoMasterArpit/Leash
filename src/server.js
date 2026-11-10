@@ -167,6 +167,10 @@ app.use((err, req, res, next) => {
     console.error('PayPal error', err.debugId, err.message);
     return res.status(502).json({ error: err.message, debugId: err.debugId });
   }
+  if (err instanceof paypal.PayPalUnreachableError) {
+    console.error('PayPal unreachable', err.cause?.cause?.code ?? err.cause?.message);
+    return res.status(502).json({ error: err.message });
+  }
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Malformed JSON body' });
   console.error(err);
   res.status(500).json({ error: 'Something went wrong' });
