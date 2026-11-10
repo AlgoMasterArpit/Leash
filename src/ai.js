@@ -65,9 +65,9 @@ export async function compileRules(text) {
 }
 
 const VerdictSchema = z.object({
-  verdict: z.enum(['approve', 'review', 'block']),
-  risk: z.number().min(0).max(100),
-  reasons: z.array(z.string()).max(5),
+  verdict: z.preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.enum(['approve', 'review', 'block'])),
+  risk: z.coerce.number().transform((n) => Math.min(Math.max(Math.round(n), 0), 100)),
+  reasons: z.array(z.string()).transform((r) => r.slice(0, 5)),
   summary: z.string(),
 });
 
