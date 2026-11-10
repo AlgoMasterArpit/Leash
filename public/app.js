@@ -15,10 +15,11 @@ function timeAgo(iso) {
 }
 
 async function api(path, { method = 'GET', body } = {}) {
+  const write = method !== 'GET';
   const res = await fetch(path, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body && JSON.stringify(body),
+    headers: write ? { 'Content-Type': 'application/json' } : undefined,
+    body: write ? JSON.stringify(body ?? {}) : undefined,
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
