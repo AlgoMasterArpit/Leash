@@ -53,6 +53,7 @@ export async function injectionScore(text) {
     model: config.GROQ_GUARD_MODEL,
     messages: [{ role: 'user', content: text.slice(0, 2000) }],
   });
-  const score = Number(message.content);
-  return Number.isFinite(score) ? score : 0;
+  const score = Number.parseFloat(message.content);
+  if (!Number.isFinite(score)) throw new GroqError(502, `Prompt Guard returned a non-numeric score: ${message.content}`);
+  return score;
 }
