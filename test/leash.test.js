@@ -18,7 +18,13 @@ const RULES = {
   },
 };
 
-function setup({ verdict = 'approve', injection = 0.01, judgeFails = false, captureStatus = 'COMPLETED' } = {}) {
+function setup({
+  verdict = 'approve',
+  injection = 0.01,
+  judgeFails = false,
+  captureStatus = 'COMPLETED',
+  limitCents = RULES.rules.autoApproveLimitCents,
+} = {}) {
   const store = createStore(':memory:');
   const charges = [];
   const paypal = {
@@ -43,7 +49,7 @@ function setup({ verdict = 'approve', injection = 0.01, judgeFails = false, capt
     },
   };
   const leash = createLeash({ store, paypal, ai, catalog, publicUrl: 'http://test', seedVaultId: 'vault-1' });
-  store.setSetting('rules', RULES);
+  store.setSetting('rules', { ...RULES, rules: { ...RULES.rules, autoApproveLimitCents: limitCents } });
   return { leash, store, charges };
 }
 
@@ -150,13 +156,21 @@ test('approving without a wallet leaves the purchase awaiting approval', async (
 });
 
 test('pending captures count toward the weekly budget', async () => {
-  const { leash } = setup({ captureStatus: 'PENDING' });
+  const { leash } = setup({ captureStatus: 'PENDING', limitCents: 20000 });
   const results = [];
   for (let n = 0; n < 6; n++) {
     results.push(await leash.requestPurchase({ agent: `bot-${n}`, reason: 'beans', items: [{ sku: 'BB-ESP-1KG', qty: 2 }] }));
   }
   assert.equal(results.filter((p) => p.status === 'payment_pending').length, 4);
   assert.ok(leash.budget().spentCents <= 20000);
+});
+
+test('renaming the agent does not dodge the splitting check', async () => {
+  const { leash } = setup();
+  const order = (agent) => leash.requestPurchase({ agent, reason: 'cups', items: [{ sku: 'CC-CUP12-50', qty: 5 }] });
+  assert.equal((await order('bot')).status, 'paid');
+  assert.equal((await order('bot-2')).status, 'pending_owner');
+  assert.equal((await order('BOT')).status, 'pending_owner');
 });
 
 test('rejects unknown SKUs', async () => {
@@ -174,7 +188,7 @@ test('owner approval re-checks the weekly budget', async () => {
 });
 
 test('concurrent purchases cannot overspend the budget', async () => {
-  const { leash } = setup();
+  const { leash } = setup({ limitCents: 20000 });
   const results = await Promise.all(
     Array.from({ length: 6 }, (_, n) =>
       leash.requestPurchase({ agent: `agent-${n}`, reason: 'restock', items: [{ sku: 'BB-ESP-1KG', qty: 2 }] }),
