@@ -7,12 +7,13 @@ const LEASH_URL = (process.env.LEASH_URL || 'http://localhost:3000').replace(/\/
 const AGENT_NAME = process.env.LEASH_AGENT_NAME || 'MCP agent';
 const AGENT_KEY = process.env.LEASH_AGENT_KEY;
 
-async function leash(path, { method = 'GET', body } = {}) {
+async function leash(path, { method = 'GET', body, idempotencyKey } = {}) {
   const res = await fetch(`${LEASH_URL}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...(AGENT_KEY && { 'x-leash-agent-key': AGENT_KEY }),
+      ...(idempotencyKey && { 'Idempotency-Key': idempotencyKey }),
     },
     body: body && JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
@@ -134,11 +135,20 @@ server.registerTool(
         .min(1)
         .describe('Products by SKU from search_catalog'),
       reason: z.string().describe('Why the business needs this, in one sentence'),
+      idempotency_key: z
+        .string()
+        .max(100)
+        .optional()
+        .describe('Reuse the same key when retrying the same order, so it is never charged twice'),
     },
   },
-  async ({ items, reason }) => {
+  async ({ items, reason, idempotency_key }) => {
     try {
-      const purchase = await leash('/api/purchases', { method: 'POST', body: { agent: AGENT_NAME, reason, items } });
+      const purchase = await leash('/api/purchases', {
+        method: 'POST',
+        body: { agent: AGENT_NAME, reason, items },
+        idempotencyKey: idempotency_key,
+      });
       return text(describePurchase(purchase));
     } catch (err) {
       return failure(err);
