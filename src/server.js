@@ -7,6 +7,7 @@ import { createLeash } from './leash.js';
 import { createAgent } from './agent.js';
 import { AppError } from './errors.js';
 import { createAccessControl } from './auth.js';
+import { PurchaseBody } from './schemas.js';
 import { DEFAULT_RULES_TEXT } from './rules.js';
 import * as paypal from './paypal.js';
 import * as ai from './ai.js';
@@ -25,14 +26,6 @@ const leash = createLeash({
 const runAgent = createAgent({ chat, leash, catalog });
 
 const RulesBody = z.object({ text: z.string().trim().min(10).max(1000) });
-const PurchaseBody = z.object({
-  agent: z.string().trim().min(1).max(80),
-  reason: z.string().trim().min(1).max(500),
-  items: z
-    .array(z.object({ sku: z.string().min(1).max(40), qty: z.number().int().min(1).max(100) }))
-    .min(1)
-    .max(20),
-});
 const RefundBody = z.object({ note: z.string().max(255).optional() });
 const IdempotencyKey = z.string().trim().min(1).max(100).optional();
 const AgentBody = z.object({ task: z.string().trim().min(3).max(500) });
