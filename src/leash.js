@@ -191,22 +191,27 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
           spentCents: spentThisWeek(),
           recentAutoPaidCents: recentAutoPaidCents(items),
         });
-        const injected = review.injectionScore != null && review.injectionScore >= INJECTION_THRESHOLD;
+        const scannerDown = review.injectionScore == null;
+        const injected = !scannerDown && review.injectionScore >= INJECTION_THRESHOLD;
+        const injectionStatus = injected ? 'block' : scannerDown ? 'review' : 'pass';
         const checks = [
           ...hard.checks,
           {
             id: 'injection',
             label: 'Prompt injection scan',
-            status: injected ? 'block' : 'pass',
-            detail:
-              review.injectionScore == null
-                ? 'Scanner unavailable'
-                : injected
-                  ? `Manipulative instructions detected (score ${review.injectionScore.toFixed(2)})`
-                  : 'No manipulation detected',
+            status: injectionStatus,
+            detail: scannerDown
+              ? 'Scanner unavailable, so the owner must approve'
+              : injected
+                ? `Manipulative instructions detected (score ${review.injectionScore.toFixed(2)})`
+                : 'No manipulation detected',
           },
         ];
-        const decision = strictest(hard.decision, review.verdict.verdict, injected ? 'block' : 'approve');
+        const decision = strictest(
+          hard.decision,
+          review.verdict.verdict,
+          { pass: 'approve', review: 'review', block: 'block' }[injectionStatus],
+        );
 
         const purchase = store.insertPurchase({
           id: purchaseId(),
