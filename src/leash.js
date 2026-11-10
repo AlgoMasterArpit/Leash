@@ -79,7 +79,10 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
   async function charge(purchase) {
     const current = wallet();
-    if (!current) throw new AppError(409, 'Connect a PayPal account first', 'NO_WALLET');
+    if (!current) {
+      store.logEvent('paypal.charge_failed', purchase.id, { message: 'No PayPal wallet connected' });
+      return store.updatePurchase(purchase.id, { status: 'failed', error: 'No PayPal wallet connected' });
+    }
     try {
       const result = await paypal.chargeVault({
         vaultId: current.vaultId,
@@ -92,6 +95,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       store.logEvent('paypal.charged', purchase.id, result);
       return store.updatePurchase(purchase.id, {
         status: paid ? 'paid' : 'payment_pending',
+        paid_at: new Date().toISOString(),
         order_id: result.orderId,
         capture_id: result.captureId,
         capture_status: result.captureStatus,
@@ -266,6 +270,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
         if (spentThisWeek() + purchase.total_cents > policy.weeklyBudgetCents) {
           throw new AppError(409, 'Approving this would exceed the weekly budget', 'OVER_BUDGET');
         }
+        if (!wallet()) throw new AppError(409, 'Connect a PayPal account first', 'NO_WALLET');
         store.updatePurchase(id, { decided_by: 'owner', status: 'processing' });
         store.logEvent('purchase.owner_approved', id);
         return charge(store.getPurchase(id));

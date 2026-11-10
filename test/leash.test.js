@@ -140,6 +140,25 @@ test('disconnecting stops payments even when a seed vault is configured', async 
   assert.equal(charges.length, 0);
 });
 
+test('approving without a wallet leaves the purchase awaiting approval', async () => {
+  const { leash } = setup();
+  const held = await buy(leash, [{ sku: 'KP-GRIND-01', qty: 1 }]);
+  await leash.disconnect();
+  await assert.rejects(leash.approve(held.id), /Connect a PayPal account first/);
+  assert.equal(leash.getPurchase(held.id).status, 'pending_owner');
+  assert.equal(leash.decline(held.id).status, 'declined');
+});
+
+test('pending captures count toward the weekly budget', async () => {
+  const { leash } = setup({ captureStatus: 'PENDING' });
+  const results = [];
+  for (let n = 0; n < 6; n++) {
+    results.push(await leash.requestPurchase({ agent: `bot-${n}`, reason: 'beans', items: [{ sku: 'BB-ESP-1KG', qty: 2 }] }));
+  }
+  assert.equal(results.filter((p) => p.status === 'payment_pending').length, 4);
+  assert.ok(leash.budget().spentCents <= 20000);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);
