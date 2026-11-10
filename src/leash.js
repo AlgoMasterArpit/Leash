@@ -70,6 +70,8 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
   async function aiReview(input) {
     const [verdict, injection] = await Promise.allSettled([ai.judgePurchase(input), ai.scanForInjection(input)]);
+    if (verdict.status === 'rejected') console.warn('AI judge unavailable:', verdict.reason?.message);
+    if (injection.status === 'rejected') console.warn('Injection scan unavailable:', injection.reason?.message);
     return {
       verdict:
         verdict.status === 'fulfilled'
