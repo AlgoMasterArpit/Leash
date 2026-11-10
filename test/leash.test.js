@@ -190,6 +190,26 @@ test('sends purchases to the owner when the injection scanner is down', async ()
   assert.equal(charges.length, 0);
 });
 
+test('webhooks follow allowed transitions and ignore partial refunds', async () => {
+  const { leash } = setup();
+  const paid = await buy(leash, [{ sku: 'CC-CUP12-50', qty: 2 }]);
+  const refundEvent = (value) => ({
+    event_type: 'PAYMENT.CAPTURE.REFUNDED',
+    resource: { id: 'R-1', amount: { value }, links: [{ rel: 'up', href: `https://api/v2/payments/captures/${paid.capture_id}` }] },
+  });
+
+  assert.equal(leash.handleWebhook(refundEvent('1.00')).status, 'paid');
+  assert.equal(leash.budget().spentCents, 1800);
+  assert.equal(leash.handleWebhook(refundEvent('18.00')).status, 'refunded');
+  assert.equal(
+    leash.handleWebhook({ event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { id: paid.capture_id } }).status,
+    'refunded',
+  );
+
+  const blocked = await buy(leash, [{ sku: 'KOS-TRIAL', qty: 1 }]);
+  assert.equal(leash.handleWebhook({ event_type: 'PAYMENT.CAPTURE.DENIED', resource: { custom_id: blocked.id } }).status, 'blocked');
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);

@@ -8,6 +8,13 @@ export const INJECTION_THRESHOLD = 0.5;
 
 const STATUS_FOR_DECISION = { approve: 'processing', review: 'pending_owner', block: 'blocked' };
 
+const WEBHOOK_TRANSITIONS = {
+  'PAYMENT.CAPTURE.COMPLETED': { from: ['processing', 'payment_pending', 'failed'], set: { status: 'paid', capture_status: 'COMPLETED' } },
+  'PAYMENT.CAPTURE.PENDING': { from: ['processing'], set: { status: 'payment_pending', capture_status: 'PENDING' } },
+  'PAYMENT.CAPTURE.DENIED': { from: ['processing', 'payment_pending'], set: { status: 'failed', capture_status: 'DENIED' } },
+  'PAYMENT.CAPTURE.REFUNDED': { from: ['paid'], set: {} },
+};
+
 function purchaseId() {
   return `pur_${randomBytes(6).toString('hex')}`;
 }
@@ -328,13 +335,21 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       if (!purchase) return null;
 
       store.logEvent(`webhook.${event.event_type}`, purchase.id, { id: event.id, status: resource.status });
-      const updates = {
-        'PAYMENT.CAPTURE.COMPLETED': { status: 'paid', capture_status: 'COMPLETED' },
-        'PAYMENT.CAPTURE.PENDING': { status: 'payment_pending', capture_status: 'PENDING' },
-        'PAYMENT.CAPTURE.DENIED': { status: 'failed', capture_status: 'DENIED' },
-        'PAYMENT.CAPTURE.REFUNDED': { status: 'refunded', refund_id: resource.id },
-      }[event.event_type];
-      return updates ? store.updatePurchase(purchase.id, updates) : purchase;
+      const transition = WEBHOOK_TRANSITIONS[event.event_type];
+      if (!transition || !transition.from.includes(purchase.status)) return purchase;
+
+      if (event.event_type === 'PAYMENT.CAPTURE.REFUNDED') {
+        const refundedCents = resource.amount?.value ? toCents(resource.amount.value) : purchase.total_cents;
+        if (refundedCents < purchase.total_cents) {
+          store.logEvent('paypal.partial_refund', purchase.id, { refundedCents });
+          return purchase;
+        }
+        return store.updatePurchase(purchase.id, { status: 'refunded', refund_id: resource.id });
+      }
+      return store.updatePurchase(purchase.id, {
+        ...transition.set,
+        ...(transition.set.status === 'paid' && !purchase.paid_at && { paid_at: new Date().toISOString() }),
+      });
     },
 
     resetDemo() {
