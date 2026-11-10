@@ -26,14 +26,27 @@ function basicPassword(header) {
   return decoded.slice(decoded.indexOf(':') + 1);
 }
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const PURCHASE_WRITE = /^\/api\/purchases(\/preview)?$/i;
+
+// Browsers can send cross-site form posts with ambient credentials, but not JSON without a CORS preflight.
+export function isCrossSiteWrite(req) {
+  if (SAFE_METHODS.has(req.method)) return false;
+  if (req.get('sec-fetch-site') === 'cross-site') return true;
+  return !(req.get('content-type') ?? '').toLowerCase().startsWith('application/json');
+}
+
 export function createAccessControl({ dashboardPassword, agentKey }) {
   return function accessControl(req, res, next) {
+    if (isCrossSiteWrite(req)) {
+      return res.status(403).json({ error: 'Write requests must be same-site JSON requests' });
+    }
     const isOwner = !dashboardPassword || safeEqual(basicPassword(req.get('authorization')), dashboardPassword);
     const isAgent = Boolean(agentKey) && safeEqual(req.get('x-leash-agent-key'), agentKey);
     const agentRoute = isAgentRoute(req.method, req.path);
 
     if (agentRoute && isAgent) return next();
-    if (req.method === 'POST' && req.path === '/api/purchases' && agentKey && !dashboardPassword) {
+    if (req.method === 'POST' && PURCHASE_WRITE.test(req.path.replace(/\/+$/, '')) && agentKey && !dashboardPassword) {
       return res.status(401).json({ error: 'Missing or invalid x-leash-agent-key header' });
     }
     if (isOwner) return next();

@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAccessControl, isAgentRoute, safeEqual } from '../src/auth.js';
 
-function run(middleware, { method = 'GET', path = '/', headers = {} } = {}) {
+function run(middleware, { method = 'GET', path = '/', headers = {}, json = true } = {}) {
   const lower = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
+  if (json && method !== 'GET') lower['content-type'] ??= 'application/json';
   const req = { method, path, get: (name) => lower[name.toLowerCase()] };
   const res = {
     statusCode: 200,
@@ -72,4 +73,22 @@ test('agent key is required for purchases when set without a dashboard password'
   assert.equal(run(guard, { method: 'POST', path: '/api/purchases' }).status, 401);
   assert.ok(run(guard, { method: 'POST', path: '/api/purchases', headers: { 'x-leash-agent-key': 'agent-key' } }).passed);
   assert.ok(run(guard, { method: 'POST', path: '/api/purchases/x/approve' }).passed);
+});
+
+test('rejects cross-site and non-JSON writes to block CSRF', () => {
+  const guard = createAccessControl({ dashboardPassword: 'hunter2' });
+  const owner = { Authorization: basic('hunter2') };
+  const form = run(guard, { method: 'POST', path: '/api/purchases/x/approve', headers: { ...owner, 'Content-Type': 'application/x-www-form-urlencoded' } });
+  assert.equal(form.status, 403);
+  assert.equal(run(guard, { method: 'POST', path: '/api/demo/reset', headers: owner, json: false }).status, 403);
+  const crossSite = run(guard, { method: 'POST', path: '/api/purchases/x/approve', headers: { ...owner, 'Sec-Fetch-Site': 'cross-site' } });
+  assert.equal(crossSite.status, 403);
+  assert.ok(run(guard, { method: 'POST', path: '/api/purchases/x/approve', headers: owner }).passed);
+  assert.ok(run(guard, { method: 'GET', path: '/api/state', headers: owner, json: false }).passed);
+});
+
+test('a trailing slash does not skip the agent key check', () => {
+  const guard = createAccessControl({ agentKey: 'agent-key' });
+  assert.equal(run(guard, { method: 'POST', path: '/api/purchases/' }).status, 401);
+  assert.equal(run(guard, { method: 'POST', path: '/api/purchases/preview' }).status, 401);
 });
