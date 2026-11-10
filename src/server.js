@@ -40,6 +40,12 @@ const AgentBody = z.object({ task: z.string().trim().min(3).max(500) });
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+app.set('case sensitive routing', true);
+app.set('strict routing', true);
+
+if (config.LEASH_AGENT_KEY && !config.DASHBOARD_PASSWORD) {
+  console.warn('LEASH_AGENT_KEY is set without DASHBOARD_PASSWORD: owner routes are open to anyone who can reach this server.');
+}
 
 app.use((req, res, next) => {
   res.set({
