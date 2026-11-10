@@ -161,7 +161,7 @@ Requirements: Node.js 22.13+ (Node 24 recommended), a [PayPal developer](https:/
 }
 ```
 
-This exposes four tools: `search_catalog`, `check_budget`, `request_purchase` and `purchase_status`. Ask Claude to *"restock cups and lids for the café"* and the purchase appears in the Leash dashboard. If the server sets `LEASH_AGENT_KEY`, pass the same value in the MCP `env`.
+This exposes five tools: `search_catalog`, `check_budget`, `preview_purchase` (a dry run that says whether a purchase would be paid, held or blocked, without buying), `request_purchase` and `purchase_status`. Ask Claude to *"restock cups and lids for the café"* and the purchase appears in the Leash dashboard. If the server sets `LEASH_AGENT_KEY`, pass the same value in the MCP `env`.
 
 ### Agent REST API
 
@@ -173,6 +173,8 @@ curl -X POST http://localhost:3000/api/purchases \
 ```
 
 The response includes `decision` (`approve | review | block`), `status` (`paid | pending_owner | blocked | …`), every check, the AI verdict and the PayPal capture ID.
+
+`POST /api/purchases/preview` takes the same `agent` and `items` and returns the rules' decision without paying or recording anything, so an agent can check before it asks.
 
 ## Deploy to Render
 
