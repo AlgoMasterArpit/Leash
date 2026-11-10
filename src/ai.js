@@ -126,8 +126,24 @@ ${checks.map((c) => `- ${c.label}: ${c.status} (${c.detail})`).join('\n')}`;
   return VerdictSchema.parse(await chatJson({ system: JUDGE_PROMPT, user }));
 }
 
+const SCORE_CACHE_LIMIT = 500;
+const SCAN_CONCURRENCY = 2;
+const scoreCache = new Map();
+
+async function cachedScore(text) {
+  if (scoreCache.has(text)) return scoreCache.get(text);
+  const score = await injectionScore(text);
+  if (scoreCache.size >= SCORE_CACHE_LIMIT) scoreCache.delete(scoreCache.keys().next().value);
+  scoreCache.set(text, score);
+  return score;
+}
+
 export async function scanForInjection({ reason, items }) {
-  const segments = injectionSegments([reason, ...items.map((i) => `${i.name}. ${i.description}`)]);
-  const scores = await Promise.all(segments.map(injectionScore));
-  return Math.max(...scores);
+  const queue = injectionSegments([reason, ...items.map((i) => `${i.name}. ${i.description}`)]);
+  let max = 0;
+  const worker = async () => {
+    while (queue.length) max = Math.max(max, await cachedScore(queue.shift()));
+  };
+  await Promise.all(Array.from({ length: SCAN_CONCURRENCY }, worker));
+  return max;
 }
