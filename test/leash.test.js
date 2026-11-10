@@ -110,6 +110,18 @@ test('blocks purchases when prompt injection is detected', async () => {
   assert.equal(p.checks.find((c) => c.id === 'injection').status, 'block');
 });
 
+test('holds the second half of a split order for the owner', async () => {
+  const { leash, charges } = setup();
+  const first = await buy(leash, [{ sku: 'BB-ESP-1KG', qty: 1 }]);
+  const second = await buy(leash, [{ sku: 'BB-ESP-1KG', qty: 1 }]);
+  const third = await buy(leash, [{ sku: 'BB-ESP-1KG', qty: 1 }]);
+  assert.equal(first.status, 'paid');
+  assert.equal(second.status, 'paid');
+  assert.equal(third.status, 'pending_owner');
+  assert.equal(third.checks.find((c) => c.id === 'splitting').status, 'review');
+  assert.equal(charges.length, 2);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);
@@ -127,7 +139,9 @@ test('owner approval re-checks the weekly budget', async () => {
 test('concurrent purchases cannot overspend the budget', async () => {
   const { leash } = setup();
   const results = await Promise.all(
-    Array.from({ length: 6 }, () => buy(leash, [{ sku: 'BB-ESP-1KG', qty: 2 }])),
+    Array.from({ length: 6 }, (_, n) =>
+      leash.requestPurchase({ agent: `agent-${n}`, reason: 'restock', items: [{ sku: 'BB-ESP-1KG', qty: 2 }] }),
+    ),
   );
   assert.equal(results.filter((p) => p.status === 'paid').length, 4);
   assert.ok(leash.budget().spentCents <= 20000);
