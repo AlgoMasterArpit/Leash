@@ -233,6 +233,27 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       });
     },
 
+    previewPurchase({ agent, items: requested }) {
+      const { rules: policy } = rules();
+      const items = resolveItems(requested);
+      const totalCents = items.reduce((sum, i) => sum + toCents(i.unitPrice) * i.qty, 0);
+      const spentCents = spentThisWeek();
+      const { decision, checks } = evaluateHardRules({
+        rules: policy,
+        items,
+        totalCents,
+        spentCents,
+        recentAutoPaidCents: recentAutoPaidCents(agent, items),
+      });
+      return {
+        decision,
+        totalCents,
+        remainingCents: Math.max(policy.weeklyBudgetCents - spentCents, 0),
+        checks,
+        note: 'Rules only. The real request also runs the AI risk judge and the injection scan, which can only make the decision stricter.',
+      };
+    },
+
     approve(id) {
       return serialized(async () => {
         const purchase = store.getPurchase(id);
