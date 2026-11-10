@@ -661,6 +661,25 @@ code,
   padding-left: 18px;
 }
 
+.agent-message table {
+  width: 100%;
+  margin: 6px 0 8px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.agent-message th,
+.agent-message td {
+  padding: 5px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  text-align: left;
+  vertical-align: top;
+}
+
+.agent-message th {
+  font-weight: 600;
+}
+
 .thinking {
   display: flex;
   align-items: center;

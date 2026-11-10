@@ -421,13 +421,31 @@ function renderMarkdown(text) {
     .filter(Boolean);
   let html = '';
   let inList = false;
+  let table = null;
+  const cells = (line) => line.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+  const flushTable = () => {
+    if (!table) return;
+    const [head, ...body] = table;
+    html += `<table><thead><tr>${head.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${body
+      .map((row) => `<tr>${row.map((c) => `<td>${c}</td>`).join('')}</tr>`)
+      .join('')}</tbody></table>`;
+    table = null;
+  };
   for (const line of lines) {
+    if (line.startsWith('|')) {
+      if (inList) html += '</ul>';
+      inList = false;
+      if (!/^\|[\s:|-]+\|?$/.test(line)) (table ??= []).push(cells(line));
+      continue;
+    }
+    flushTable();
     const bullet = line.match(/^[-*•]\s+(.*)/);
     if (bullet && !inList) html += '<ul>';
     if (!bullet && inList) html += '</ul>';
     inList = Boolean(bullet);
-    html += bullet ? `<li>${bullet[1]}</li>` : `<p>${line}</p>`;
+    html += bullet ? `<li>${bullet[1]}</li>` : `<p>${line.replace(/^#{1,6}\s+/, '')}</p>`;
   }
+  flushTable();
   return html + (inList ? '</ul>' : '');
 }
 
