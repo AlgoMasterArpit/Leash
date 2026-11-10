@@ -46,7 +46,7 @@
 
 ![The approvals inbox with an Approve and pay button](docs/step-4-approve.png)
 
-**5. Every decision is explained and auditable.** Click any purchase to see each check, the AI's reasoning, the PayPal order and capture IDs, and the full audit trail. Paid purchases can be refunded through PayPal in one click.
+**5. Every decision is explained and auditable.** Click any purchase to see each check, the AI's reasoning and the audit trail. This is the blocked listing: three checks failed, including the prompt-injection scan at a score of 1.00. For paid purchases the drawer also shows the PayPal order and capture IDs, and they can be refunded through PayPal in one click.
 
 ![The purchase drawer: every check, the prompt-injection flag, the AI review and the audit trail](docs/step-5-audit.png)
 
