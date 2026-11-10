@@ -92,7 +92,22 @@ function renderRules(rules) {
     return;
   }
   if (!rulesDirty) $('rules-text').value = rules.text;
-  $('rules-compiled').innerHTML = rules.summary.map((line) => `<li>${escapeHtml(line)}</li>`).join('');
+  $('rules-compiled').innerHTML = enforcedPolicy(rules.rules)
+    .map((line) => `<li>${escapeHtml(line)}</li>`)
+    .join('');
+}
+
+function enforcedPolicy(policy) {
+  const lines = [
+    `${usd(policy.weeklyBudgetCents)} weekly budget`,
+    `Pays automatically up to ${usd(policy.autoApproveLimitCents)} per vendor per day; above that, asks you`,
+    policy.allowedVendors.length ? `Only these vendors: ${policy.allowedVendors.join(', ')}` : 'Any vendor',
+  ];
+  if (policy.requireVerifiedVendors) lines.push('Unverified merchants are blocked');
+  if (policy.blockRecurring) lines.push('No subscriptions, trials or recurring charges');
+  if (policy.blockedCategories.length) lines.push(`Blocked categories: ${policy.blockedCategories.join(', ')}`);
+  if (policy.notes) lines.push(`AI judge also considers: ${policy.notes}`);
+  return lines;
 }
 
 async function refreshState() {
