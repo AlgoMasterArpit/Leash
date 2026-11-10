@@ -34,6 +34,7 @@ const PurchaseBody = z.object({
     .max(20),
 });
 const RefundBody = z.object({ note: z.string().max(255).optional() });
+const IdempotencyKey = z.string().trim().min(1).max(100).optional();
 const AgentBody = z.object({ task: z.string().trim().min(3).max(500) });
 
 const app = express();
@@ -115,7 +116,8 @@ app.post('/api/purchases/preview', (req, res) => {
 });
 
 app.post('/api/purchases', async (req, res) => {
-  const purchase = await leash.requestPurchase(PurchaseBody.parse(req.body));
+  const idempotencyKey = IdempotencyKey.parse(req.get('idempotency-key'));
+  const purchase = await leash.requestPurchase({ ...PurchaseBody.parse(req.body), idempotencyKey });
   res.status(201).json(purchase);
 });
 
