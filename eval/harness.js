@@ -70,12 +70,18 @@ export function percentile(values, p) {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 }
 
-export function meta(extra = {}) {
-  let commit = 'unknown';
+const COMMIT_AT_START = (() => {
   try {
-    commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-  } catch {}
-  return { generatedAt: new Date().toISOString(), commit, ...extra };
+    const sha = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    const dirty = execSync('git status --porcelain -- src', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return dirty ? `${sha}+uncommitted` : sha;
+  } catch {
+    return 'unknown';
+  }
+})();
+
+export function meta(extra = {}) {
+  return { generatedAt: new Date().toISOString(), commit: COMMIT_AT_START, ...extra };
 }
 
 export function saveResult(name, data) {
