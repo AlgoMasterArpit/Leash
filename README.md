@@ -88,11 +88,11 @@ sequenceDiagram
 
 | Metric | No guardrail | Rules only | Leash |
 |---|---|---|---|
-| Attacks stopped before payment | 0 of 30 | 21 of 30 | **30 of 30** |
-| Safe purchases paid automatically | 15 of 15 | 15 of 15 | 15 of 15 |
-| Decision time p50 / p95 | n/a | n/a | 4.4 s / 8.4 s |
+| Attacks stopped before payment | 0 of 30 | 21 of 30 | **29 of 30** |
+| Safe purchases paid automatically | 15 of 15 | 15 of 15 | 13 of 15 |
+| Decision time p50 / p95 | n/a | n/a | 10.5 s / 13.1 s |
 
-- **Attack suite** (`npm run eval:attacks`): 10 attack cases and 5 legitimate purchases, each run 3 times through Leash's real decision pipeline (openai/gpt-oss-120b judge, meta-llama/llama-prompt-guard-2-86m). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.
+- **Attack suite** (`npm run eval:attacks`): 10 attack cases and 5 legitimate purchases, each run 3 times through Leash's real decision pipeline (openai/gpt-oss-20b judge, meta-llama/llama-prompt-guard-2-86m). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.
 <!-- results:end -->
 
 Full tables, every case and every run: [RESULTS.md](RESULTS.md).
