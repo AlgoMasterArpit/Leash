@@ -199,6 +199,7 @@ src/
   catalog.js    Demo supplier catalog for the café scenario
 public/         Dashboard (vanilla JS + AG Grid, no build step)
 test/           node:test suites for rules, purchases, store, auth and money
+eval/           Attack suite, agent comparison and the report generator; raw results in eval/results/
 ```
 
 ## Tests
