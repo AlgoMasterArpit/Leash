@@ -173,6 +173,14 @@ test('renaming the agent does not dodge the splitting check', async () => {
   assert.equal((await order('BOT')).status, 'pending_owner');
 });
 
+test('rules changed during the AI review apply to the purchase', async () => {
+  const { leash, store, charges } = setup();
+  const pending = buy(leash, [{ sku: 'BB-ESP-1KG', qty: 1 }]);
+  store.setSetting('rules', { ...RULES, rules: { ...RULES.rules, allowedVendors: ['CupCo Packaging'] } });
+  assert.equal((await pending).status, 'blocked');
+  assert.equal(charges.length, 0);
+});
+
 test('rejects unknown SKUs', async () => {
   const { leash } = setup();
   await assert.rejects(buy(leash, [{ sku: 'NOPE', qty: 1 }]), /Unknown product SKU/);

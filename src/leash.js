@@ -185,7 +185,7 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
 
       return serialized(async () => {
         const hard = evaluateHardRules({
-          rules: policy,
+          rules: rules().rules,
           items,
           totalCents,
           spentCents: spentThisWeek(),
