@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { chatJson, injectionScore } from './groq.js';
 import { RulesSchema, resolveVendors } from './rules.js';
 import { AppError } from './errors.js';
+import { injectionSegments } from './segments.js';
 import { toCents, formatCents } from './money.js';
 import { VENDORS } from './catalog.js';
 
@@ -126,7 +127,7 @@ ${checks.map((c) => `- ${c.label}: ${c.status} (${c.detail})`).join('\n')}`;
 }
 
 export async function scanForInjection({ reason, items }) {
-  const texts = [reason, ...items.map((i) => `${i.name}. ${i.description}`)];
-  const scores = await Promise.all(texts.map(injectionScore));
+  const segments = injectionSegments([reason, ...items.map((i) => `${i.name}. ${i.description}`)]);
+  const scores = await Promise.all(segments.map(injectionScore));
   return Math.max(...scores);
 }
