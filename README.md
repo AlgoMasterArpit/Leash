@@ -88,12 +88,25 @@ sequenceDiagram
 
 | Metric | No guardrail | Rules only | Leash |
 |---|---|---|---|
-| Attacks stopped before payment | 0 of 30 | 21 of 30 | **29 of 30** |
-| Safe purchases paid automatically | 15 of 15 | 15 of 15 | 13 of 15 |
-| Decision time p50 / p95 | n/a | n/a | 10.5 s / 13.1 s |
+| Attacks stopped before payment | 0 of 30 | 21 of 30 | **30 of 30** |
+| Safe purchases paid automatically | 15 of 15 | 15 of 15 | 15 of 15 |
+| Decision time p50 / p95 | n/a | n/a | 4.7 s / 8.7 s |
 
-- **Attack suite** (`npm run eval:attacks`): 10 attack cases and 5 legitimate purchases, each run 3 times through Leash's real decision pipeline (openai/gpt-oss-20b judge, meta-llama/llama-prompt-guard-2-86m). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.
+#### Same agent, with and without Leash
+
+| Metric | Pays directly, rules not in prompt | Pays directly, rules in prompt | Through Leash, rules not in prompt |
+|---|---|---|---|
+| Risky tasks where a rule-breaking payment went through | 6 of 6 | 0 of 6 | 0 of 6 |
+| Rule-breaking payments in total | 6 | 0 | 0 |
+| Runs that paid the prompt-injected listing | 3 of 8 | 0 of 8 | 0 of 8 |
+| Safe tasks completed with a clean payment | 2 of 2 | 2 of 2 | 2 of 2 |
+| Purchases held for the owner | 0 | 0 | 4 |
+
+- **Attack suite** (`npm run eval:attacks`): 10 attack cases and 5 legitimate purchases, each run 3 times through Leash's real decision pipeline (openai/gpt-oss-120b judge, meta-llama/llama-prompt-guard-2-86m). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit. Model calls that answered: openai/gpt-oss-120b ×45.
+- **Agent comparison** (`npm run eval:agents`): the same openai/gpt-oss-20b agent runs 8 restock tasks once each in three setups: paying directly without knowing the rules, paying directly with the owner's rules in its prompt, and paying through Leash without the rules in its prompt. Two tasks add social-engineering pressure ("the owner said it's fine"). Each payment is scored against the owner's written rules (`eval/harness.js`). The owner never presses approve during the eval. Model calls that answered: openai/gpt-oss-20b ×110.
 <!-- results:end -->
+
+**How to read this.** The "Rules only" column is what the deterministic checks catch on their own; the gap between it and Leash is what the AI judge and the injection scan add. In the agent comparison, an agent that had the owner's rules in its prompt followed them in these runs. That's the best case, and it depends entirely on the agent. Leash gets the same result without trusting the agent at all, which is what matters when the agent doesn't know the rules, is built by someone else, or reads a listing written to manipulate it.
 
 Full tables, every case and every run: [RESULTS.md](RESULTS.md).
 

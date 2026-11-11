@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="230" viewBox="0 0 760 230" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Leash evaluation results">
-<rect width="760" height="230" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="338" viewBox="0 0 760 338" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Leash evaluation results">
+<rect width="760" height="338" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
 <text x="20" y="34" font-size="14" font-weight="600" fill="#0f172a">Attacks stopped before payment (higher is better)</text>
 <text x="20" y="63" font-size="12" fill="#475569">No guardrail</text>
 <rect x="190" y="51" width="480" height="16" rx="4" fill="#e2e8f0"/>
@@ -11,8 +11,8 @@
 <text x="678" y="89" font-size="12" font-weight="600" fill="#0f172a">21 of 30</text>
 <text x="20" y="115" font-size="12" fill="#475569">Leash</text>
 <rect x="190" y="103" width="480" height="16" rx="4" fill="#e2e8f0"/>
-<rect x="190" y="103" width="464.0" height="16" rx="4" fill="#0f766e"/>
-<text x="678" y="115" font-size="12" font-weight="600" fill="#0f172a">29 of 30</text>
+<rect x="190" y="103" width="480.0" height="16" rx="4" fill="#0f766e"/>
+<text x="678" y="115" font-size="12" font-weight="600" fill="#0f172a">30 of 30</text>
 <text x="20" y="142" font-size="14" font-weight="600" fill="#0f172a">Legitimate purchases paid automatically (higher is better)</text>
 <text x="20" y="171" font-size="12" fill="#475569">No guardrail</text>
 <rect x="190" y="159" width="480" height="16" rx="4" fill="#e2e8f0"/>
@@ -20,6 +20,19 @@
 <text x="678" y="171" font-size="12" font-weight="600" fill="#0f172a">15 of 15</text>
 <text x="20" y="197" font-size="12" fill="#475569">Leash</text>
 <rect x="190" y="185" width="480" height="16" rx="4" fill="#e2e8f0"/>
-<rect x="190" y="185" width="416.0" height="16" rx="4" fill="#0f766e"/>
-<text x="678" y="197" font-size="12" font-weight="600" fill="#0f172a">13 of 15</text>
+<rect x="190" y="185" width="480.0" height="16" rx="4" fill="#0f766e"/>
+<text x="678" y="197" font-size="12" font-weight="600" fill="#0f172a">15 of 15</text>
+<text x="20" y="224" font-size="14" font-weight="600" fill="#0f172a">Risky agent tasks where a rule-breaking payment went through (lower is better)</text>
+<text x="20" y="253" font-size="12" fill="#475569">Direct, no rules</text>
+<rect x="190" y="241" width="480" height="16" rx="4" fill="#e2e8f0"/>
+<rect x="190" y="241" width="480.0" height="16" rx="4" fill="#c2410c"/>
+<text x="678" y="253" font-size="12" font-weight="600" fill="#0f172a">6 of 6</text>
+<text x="20" y="279" font-size="12" fill="#475569">Direct, rules in prompt</text>
+<rect x="190" y="267" width="480" height="16" rx="4" fill="#e2e8f0"/>
+<rect x="190" y="267" width="2.0" height="16" rx="4" fill="#b45309"/>
+<text x="678" y="279" font-size="12" font-weight="600" fill="#0f172a">0 of 6</text>
+<text x="20" y="305" font-size="12" fill="#475569">Through Leash</text>
+<rect x="190" y="293" width="480" height="16" rx="4" fill="#e2e8f0"/>
+<rect x="190" y="293" width="2.0" height="16" rx="4" fill="#0f766e"/>
+<text x="678" y="305" font-size="12" font-weight="600" fill="#0f172a">0 of 6</text>
 </svg>
