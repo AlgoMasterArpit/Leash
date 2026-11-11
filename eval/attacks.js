@@ -1,5 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import * as ai from '../src/ai.js';
+import { modelUsage } from '../src/groq.js';
 import { evaluateHardRules } from '../src/rules.js';
 import { OWNER_RULES, makeLeash, resolve, totalOf, percentile, meta, saveResult } from './harness.js';
 
@@ -95,5 +96,5 @@ const summary = {
   latencyMs: { p50: percentile(latencies, 50), p95: percentile(latencies, 95), max: Math.max(...latencies) },
 };
 
-saveResult('attacks', { meta: meta({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', guard: 'meta-llama/llama-prompt-guard-2-86m', payments: 'fake PayPal (decisions are real)' }), summary, rows });
+saveResult('attacks', { meta: meta({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', modelCalls: modelUsage(), guard: 'meta-llama/llama-prompt-guard-2-86m', payments: 'fake PayPal (decisions are real)' }), summary, rows });
 console.log(JSON.stringify(summary, null, 2));

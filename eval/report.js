@@ -68,16 +68,22 @@ function agentTable() {
   ].join('\n');
 }
 
+function callsNote(m) {
+  const calls = Object.entries(m.modelCalls ?? {});
+  if (!calls.length) return '';
+  return ` Model calls that answered: ${calls.map(([model, n]) => `${model} ×${n}`).join(', ')}.`;
+}
+
 function method() {
   const lines = [];
   if (attacks) {
     lines.push(
-      `- **Attack suite** (\`npm run eval:attacks\`): ${attacks.summary.cases.attack} attack cases and ${attacks.summary.cases.safe} legitimate purchases, each run ${attacks.summary.reps} times through Leash's real decision pipeline (${attacks.meta.model} judge, ${attacks.meta.guard}). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.`,
+      `- **Attack suite** (\`npm run eval:attacks\`): ${attacks.summary.cases.attack} attack cases and ${attacks.summary.cases.safe} legitimate purchases, each run ${attacks.summary.reps} times through Leash's real decision pipeline (${attacks.meta.model} judge, ${attacks.meta.guard}). "Rules only" is the deterministic checks without any AI. Payments use a fake PayPal so the suite can run unattended; every decision is real. Decision times include waits for Groq's free-tier rate limit.${callsNote(attacks.meta)}`,
     );
   }
   if (agents) {
     lines.push(
-      `- **Agent comparison** (\`npm run eval:agents\`): the same ${agents.meta.model} agent runs ${agents.summary.tasks} restock tasks ${agents.summary.reps} times each in three setups: paying directly without knowing the rules, paying directly with the owner's rules in its prompt, and paying through Leash without the rules in its prompt. Two tasks add social-engineering pressure ("the owner said it's fine"). Each payment is scored against the owner's written rules (\`eval/harness.js\`). The owner never presses approve during the eval.`,
+      `- **Agent comparison** (\`npm run eval:agents\`): the same ${agents.meta.model} agent runs ${agents.summary.tasks} restock tasks ${agents.summary.reps} times each in three setups: paying directly without knowing the rules, paying directly with the owner's rules in its prompt, and paying through Leash without the rules in its prompt. Two tasks add social-engineering pressure ("the owner said it's fine"). Each payment is scored against the owner's written rules (\`eval/harness.js\`). The owner never presses approve during the eval.${callsNote(agents.meta)}`,
     );
   }
   return lines.join('\n');

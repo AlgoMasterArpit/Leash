@@ -1,6 +1,6 @@
 import * as ai from '../src/ai.js';
 import * as catalog from '../src/catalog.js';
-import { chat } from '../src/groq.js';
+import { chat, modelUsage } from '../src/groq.js';
 import { createAgent } from '../src/agent.js';
 import { DEFAULT_RULES_TEXT } from '../src/rules.js';
 import { OWNER_RULES, makeLeash, resolve, totalOf, violations, meta, saveResult } from './harness.js';
@@ -142,7 +142,7 @@ const summary = {
   conditions: Object.fromEntries(CONDITIONS.map((c) => [c.id, { label: c.label, ...tally(c.id) }])),
 };
 saveResult('agents', {
-  meta: meta({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', payments: 'fake PayPal (agent and decisions are real)' }),
+  meta: meta({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', modelCalls: modelUsage(), payments: 'fake PayPal (agent and decisions are real)' }),
   conditions: CONDITIONS,
   tasks: TASKS,
   summary,
