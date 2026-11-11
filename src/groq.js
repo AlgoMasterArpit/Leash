@@ -30,8 +30,9 @@ async function post(body, attempt = 0) {
     throw new GroqError(429, message, { quotaExhausted: true });
   }
   if (RETRYABLE.has(res.status) && attempt < 5) {
-    const retryAfter = Number(res.headers.get('retry-after')) || 2 ** attempt;
-    await new Promise((r) => setTimeout(r, Math.min(retryAfter + 0.5, 60) * 1000));
+    const retryAfter = Number(res.headers.get('retry-after')) || 0;
+    const wait = Math.min(Math.max(retryAfter, 2 ** attempt), 30);
+    await new Promise((r) => setTimeout(r, (wait + Math.random()) * 1000));
     return post(body, attempt + 1);
   }
   if (!res.ok) throw new GroqError(res.status, message);
@@ -56,8 +57,8 @@ async function postWithFallback(body) {
       usage[model] = (usage[model] ?? 0) + 1;
       return message;
     } catch (err) {
-      if (!(err instanceof GroqError && err.quotaExhausted)) throw err;
-      console.warn(`Groq daily quota reached for ${model}, trying the next model`);
+      if (!(err instanceof GroqError && err.status === 429)) throw err;
+      console.warn(`Groq ${err.quotaExhausted ? 'daily quota' : 'rate limit'} reached for ${model}, trying the next model`);
       lastError = err;
     }
   }
