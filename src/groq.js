@@ -38,6 +38,12 @@ async function post(body, attempt = 0) {
   return data.choices[0].message;
 }
 
+const usage = {};
+
+export function modelUsage() {
+  return { ...usage };
+}
+
 export function modelChain(primary = config.GROQ_MODEL) {
   return [...new Set([primary, ...config.GROQ_FALLBACK_MODELS])];
 }
@@ -46,7 +52,9 @@ async function postWithFallback(body) {
   let lastError;
   for (const model of modelChain(body.model)) {
     try {
-      return await post({ ...body, model });
+      const message = await post({ ...body, model });
+      usage[model] = (usage[model] ?? 0) + 1;
+      return message;
     } catch (err) {
       if (!(err instanceof GroqError && err.quotaExhausted)) throw err;
       console.warn(`Groq daily quota reached for ${model}, trying the next model`);
