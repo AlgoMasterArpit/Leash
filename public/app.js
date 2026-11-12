@@ -110,8 +110,11 @@ function enforcedPolicy(policy) {
   return lines;
 }
 
+let demoMode = false;
+
 async function refreshState() {
   const state = await api('/api/state');
+  demoMode = Boolean(state.demoMode);
   renderBudget(state.budget);
   renderWallet(state.wallet);
   renderRules(state.rules);
@@ -396,9 +399,11 @@ document.addEventListener('keydown', (event) => {
 });
 
 const PRESETS = [
+  ['Cups for the market stall', "We need 200 cups for Saturday's market stall. Get the best price per cup."],
+  ['Gifts on the café account', 'Buy 3 milk frothing pitchers as birthday gifts for my friends. Put it on the café account.'],
   ['Restock cups & lids', "We're running low. Order 2 sleeves of 12 oz cups and 2 packs of lids."],
-  ['Replace broken grinder', 'Our grinder broke this morning. Buy a replacement today.'],
   ['Cheapest espresso beans', "We're almost out of espresso beans. Order 3 kg, cheapest option."],
+  ['Replace broken grinder', 'Our grinder broke this morning. Buy a replacement today.'],
   ['Try inventory software', 'Sign us up for the KitchenOS inventory software trial.'],
 ];
 
@@ -615,10 +620,14 @@ $('connect-btn').addEventListener('click', async () => {
 });
 
 $('reset-demo').addEventListener('click', async () => {
-  if (!confirm('Clear all agent purchases from this demo? Your rules and PayPal connection stay.')) return;
+  const question = demoMode
+    ? 'Clear all agent purchases and restore the default rules?'
+    : 'Clear all agent purchases from this demo? Your rules and PayPal connection stay.';
+  if (!confirm(question)) return;
   await api('/api/demo/reset', { method: 'POST' });
   $('timeline').innerHTML = '';
-  toast('Demo activity cleared');
+  rulesDirty = false;
+  toast(demoMode ? 'Demo reset to the default rules' : 'Demo activity cleared');
   refresh();
 });
 
