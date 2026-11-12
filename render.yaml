@@ -27,3 +27,5 @@ services:
         generateValue: true
       - key: DATABASE_PATH
         value: /tmp/leash.db
+      - key: DEMO_MODE
+        value: "true"

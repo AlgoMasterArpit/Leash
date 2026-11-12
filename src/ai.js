@@ -51,7 +51,15 @@ export async function compileRules(text) {
       'UNKNOWN_VENDOR',
     );
   }
-  const weeklyBudgetCents = toCents(raw.weeklyBudget ?? 100);
+  // Inventing a budget the owner never wrote would be a silent guess about their money, so ask instead.
+  if (raw.weeklyBudget == null) {
+    throw new AppError(422, 'Add a weekly budget to your rules, for example "Spend up to $200 a week".', 'NO_BUDGET');
+  }
+  const weeklyBudgetCents = toCents(raw.weeklyBudget);
+  const summary = [...raw.summary];
+  if (raw.autoApproveLimit == null) {
+    summary.push('No approval threshold given, so any purchase within the weekly budget is paid automatically');
+  }
   const rules = RulesSchema.parse({
     weeklyBudgetCents,
     autoApproveLimitCents: raw.autoApproveLimit == null ? weeklyBudgetCents : toCents(raw.autoApproveLimit),
@@ -61,7 +69,7 @@ export async function compileRules(text) {
     requireVerifiedVendors: raw.requireVerifiedVendors,
     notes: raw.notes,
   });
-  return { text, rules, summary: raw.summary };
+  return { text, rules, summary };
 }
 
 const VerdictSchema = z.object({
@@ -142,7 +150,11 @@ export async function scanForInjection({ reason, items }) {
   const queue = injectionSegments([reason, ...items.map((i) => `${i.name}. ${i.description}`)]);
   let max = 0;
   const worker = async () => {
-    while (queue.length) max = Math.max(max, await cachedScore(queue.shift()));
+    while (queue.length) {
+      // Read max only after the await; reading it first lets a slower worker overwrite a higher score.
+      const score = await cachedScore(queue.shift());
+      max = Math.max(max, score);
+    }
   };
   await Promise.all(Array.from({ length: SCAN_CONCURRENCY }, worker));
   return max;
