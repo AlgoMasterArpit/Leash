@@ -22,6 +22,7 @@ const leash = createLeash({
   catalog,
   publicUrl: config.PUBLIC_URL,
   seedVaultId: config.PAYPAL_VAULT_ID,
+  aiTimeoutMs: config.AI_TIMEOUT_MS,
 });
 const runAgent = createAgent({ chat, leash, catalog });
 
@@ -74,6 +75,7 @@ app.get('/api/state', (req, res) => {
     rules: store.getSetting('rules'),
     wallet: wallet && { connected: true, payerEmail: maskEmail(wallet.payerEmail), connectedAt: wallet.connectedAt ?? null },
     budget: leash.budget(),
+    demoMode: config.DEMO_MODE,
   });
 });
 
@@ -102,6 +104,8 @@ app.get('/connect/return', async (req, res) => {
 });
 
 app.delete('/api/wallet', async (req, res) => {
+  // On the shared demo, one visitor disconnecting would break payments for every judge after them.
+  if (config.DEMO_MODE) throw new AppError(403, 'Disconnecting PayPal is turned off on the shared demo', 'DEMO_MODE');
   await leash.disconnect();
   res.sendStatus(204);
 });
@@ -152,7 +156,7 @@ app.post('/api/agent/run', async (req, res) => {
 });
 
 app.post('/api/demo/reset', (req, res) => {
-  leash.resetDemo();
+  leash.resetDemo({ restoreDefaults: config.DEMO_MODE });
   res.sendStatus(204);
 });
 
@@ -177,11 +181,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong' });
 });
 
+// The compiled defaults are kept so "Reset demo" can restore them without another AI call.
 async function ensureRules() {
-  if (store.getSetting('rules')) return;
   try {
-    await leash.setRules(DEFAULT_RULES_TEXT);
-    console.log('Compiled default spending rules');
+    if (store.getSetting('defaultRules')?.text !== DEFAULT_RULES_TEXT) {
+      store.setSetting('defaultRules', await ai.compileRules(DEFAULT_RULES_TEXT));
+      console.log('Compiled default spending rules');
+    }
+    if (!store.getSetting('rules')) store.setSetting('rules', store.getSetting('defaultRules'));
   } catch (err) {
     console.error('Could not compile default rules; set them from the dashboard.', err.message);
   }

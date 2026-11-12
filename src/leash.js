@@ -19,7 +19,17 @@ function purchaseId() {
   return `pur_${randomBytes(6).toString('hex')}`;
 }
 
-export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId }) {
+// A slow AI answer is treated like a missing one: the purchase goes to the owner instead of hanging.
+function withTimeout(promise, ms) {
+  if (!ms) return promise;
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId, aiTimeoutMs = 0 }) {
   // ponytail: in-process lock, swap for a DB row lock if this ever runs on more than one instance
   let lock = Promise.resolve();
   function serialized(fn) {
@@ -69,7 +79,10 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
   }
 
   async function aiReview(input) {
-    const [verdict, injection] = await Promise.allSettled([ai.judgePurchase(input), ai.scanForInjection(input)]);
+    const [verdict, injection] = await Promise.allSettled([
+      withTimeout(ai.judgePurchase(input), aiTimeoutMs),
+      withTimeout(ai.scanForInjection(input), aiTimeoutMs),
+    ]);
     if (verdict.status === 'rejected') console.warn('AI judge unavailable:', verdict.reason?.message);
     if (injection.status === 'rejected') console.warn('Injection scan unavailable:', injection.reason?.message);
     return {
@@ -79,8 +92,8 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
           : {
               verdict: 'review',
               risk: 50,
-              reasons: ['AI review was unavailable, so a human needs to approve this'],
-              summary: 'AI review unavailable; sent to the owner as a precaution.',
+              reasons: ['AI review was unavailable or too slow, so a human needs to approve this'],
+              summary: 'AI review unavailable or too slow; sent to the owner as a precaution.',
             },
       injectionScore: injection.status === 'fulfilled' ? injection.value : null,
     };
@@ -359,8 +372,13 @@ export function createLeash({ store, paypal, ai, catalog, publicUrl, seedVaultId
       });
     },
 
-    resetDemo() {
+    resetDemo({ restoreDefaults = false } = {}) {
       store.clearActivity();
+      if (restoreDefaults) {
+        const defaults = store.getSetting('defaultRules');
+        if (defaults) store.setSetting('rules', defaults);
+        if (store.getSetting('wallet')?.disconnected) store.deleteSetting('wallet');
+      }
       store.logEvent('demo.reset');
     },
   };

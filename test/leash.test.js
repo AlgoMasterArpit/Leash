@@ -22,6 +22,8 @@ function setup({
   verdict = 'approve',
   injection = 0.01,
   judgeFails = false,
+  judgeHangs = false,
+  aiTimeoutMs = 0,
   captureStatus = 'COMPLETED',
   limitCents = RULES.rules.autoApproveLimitCents,
 } = {}) {
@@ -39,6 +41,7 @@ function setup({
   const ai = {
     async judgePurchase() {
       if (judgeFails) throw new Error('rate limited');
+      if (judgeHangs) return new Promise(() => {});
       return { verdict, risk: 10, reasons: ['looks fine'], summary: 'ok' };
     },
     async scanForInjection() {
@@ -49,7 +52,7 @@ function setup({
       return RULES;
     },
   };
-  const leash = createLeash({ store, paypal, ai, catalog, publicUrl: 'http://test', seedVaultId: 'vault-1' });
+  const leash = createLeash({ store, paypal, ai, catalog, publicUrl: 'http://test', seedVaultId: 'vault-1', aiTimeoutMs });
   store.setSetting('rules', { ...RULES, rules: { ...RULES.rules, autoApproveLimitCents: limitCents } });
   return { leash, store, charges };
 }
@@ -298,4 +301,27 @@ test('webhooks update purchase status by capture id', async () => {
   });
   assert.equal(updated.status, 'paid');
   assert.equal(leash.handleWebhook({ event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { id: 'other' } }), null);
+});
+
+test('a slow AI judge sends the purchase to the owner instead of hanging', async () => {
+  const { leash, charges } = setup({ judgeHangs: true, aiTimeoutMs: 20 });
+  const p = await buy(leash, [{ sku: 'CC-NAP-200', qty: 1 }]);
+  assert.equal(p.status, 'pending_owner');
+  assert.equal(charges.length, 0);
+});
+
+test('demo reset restores the default rules and a disconnected wallet', async () => {
+  const { leash, store } = setup();
+  store.setSetting('defaultRules', RULES);
+  store.setSetting('rules', { ...RULES, rules: { ...RULES.rules, weeklyBudgetCents: 0 } });
+  await leash.disconnect();
+  await buy(leash, [{ sku: 'CC-NAP-200', qty: 1 }]).catch(() => {});
+
+  leash.resetDemo();
+  assert.equal(leash.rules().rules.weeklyBudgetCents, 0, 'a plain reset keeps the rules');
+
+  leash.resetDemo({ restoreDefaults: true });
+  assert.equal(leash.rules().rules.weeklyBudgetCents, 20000);
+  assert.equal(leash.wallet().vaultId, 'vault-1');
+  assert.equal(leash.listPurchases().length, 0);
 });

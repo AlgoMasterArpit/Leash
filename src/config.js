@@ -18,6 +18,8 @@ const schema = z.object({
   LEASH_AGENT_KEY: z.string().optional(),
   DASHBOARD_PASSWORD: z.string().optional(),
   DATABASE_PATH: z.string().default('leash.db'),
+  DEMO_MODE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  AI_TIMEOUT_MS: z.coerce.number().int().nonnegative().default(20_000),
 });
 
 const env = Object.fromEntries(
